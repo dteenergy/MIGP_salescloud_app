@@ -1,0 +1,1 @@
+using CloudService as service from '../../srv/cat-service';

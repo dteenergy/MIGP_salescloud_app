@@ -1,0 +1,2 @@
+sap.ui.define(["sap/ui/core/UIComponent","com/sap/salescloud/model/models"],(e,o)=>{"use strict";return e.extend("com.sap.salescloud.Component",{metadata:{manifest:"json",interfaces:["sap.ui.core.IAsyncContentCreation"]},init(){e.prototype.init.apply(this,arguments);this.setModel(o.createDeviceModel(),"device");this.getRouter().initialize();var t=new sap.ui.model.json.JSONModel;this.setModel(t,"oUserScopeJModel")}})});
+//# sourceMappingURL=Component.js.map

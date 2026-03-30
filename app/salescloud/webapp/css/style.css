@@ -1,0 +1,6 @@
+/* Enter your custom styles here */
+.boldLabel {
+    font-weight: bold;
+    background: #007c91 !important;
+    border-bottom: 1px solid #e5e5e5;
+}

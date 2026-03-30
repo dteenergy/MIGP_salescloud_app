@@ -1,0 +1,685 @@
+<mvc:View controllerName="com.sap.salescloud.controller.View1"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:core="sap.ui.core"
+    xmlns:form="sap.ui.layout.form"
+    xmlns="sap.m"
+    xmlns:x="sap.uxap">
+
+    <!-- <Page id="page" title="" titleAlignment="Center"> -->
+    <Page id="page" title="" titleAlignment="Center" showHeader="false">
+    <content>
+          <!-- ── Context Banner — shows OPP or QUOTE context ── -->
+    <MessageStrip
+        id="idContextBanner"
+        text="{= ${oSCDetail>/isQuoteContext} === true
+            ? 'Quote : ' + ${oSCDetail>/quoteId} + ' ( Linked to Opportunity ' + ${oSCDetail>/Oppid} + ' )'
+            : 'Opportunity : ' + ${oSCDetail>/Oppid} }"
+        type="{= ${oSCDetail>/isQuoteContext} === true ? 'Information' : 'Information' }"
+        showIcon="true"
+        showCloseButton="false"
+        class="sapUiSmallMarginBegin sapUiSmallMarginEnd sapUiSmallMarginTop">
+    </MessageStrip>
+        <!-- ═══════════════════════════════════════════════════════════════════
+             HEADER FORM — FDD Section 5.3
+             Layout: 2 columns, 5 rows each side — matching screenshot exactly
+             LEFT  col: Opp ID | Status | Size of Opp | Annual Subscribed Load | Contract Lifetime Value | Price Structure | NTE | Metered Con (LCVP)
+             RIGHT col: Opp Category | Term (LCVP) | Gross Annual Usage | Sub% | Annual MWh at Close | Opp Subscribed Load | Sales Type | Unmetered Con (LCVP)
+        ════════════════════════════════════════════════════════════════════ -->
+        <form:SimpleForm id="idCustomerInfoReqForm_CC"
+            editable="true"
+            layout="ResponsiveGridLayout"
+            singleContainerFullSize="false"
+            columnsXL="2" columnsL="2"
+            labelSpanXL="5" labelSpanL="5"
+            labelSpanM="12" labelSpanS="12"
+            emptySpanXL="0" emptySpanL="0">
+          <form:content>
+
+            <!-- ════════ LEFT COLUMN ════════ -->
+            <!-- <core:Title id="_IDGenTitle1_CC" text="{i18n>opp}" icon="sap-icon://opportunities"/> -->
+
+            <!-- Row 1 L: Opportunity ID — plain Input, fetch on Enter or suggestion select -->
+            <Label id="idlbloppid" text="{i18n>oppid}"/>
+            <Input id="il8"
+                placeholder="Enter Opportunity ID"
+                showSuggestion="true"
+                suggest="onOppIdSuggest"
+                suggestionItemSelected="onOppIdSuggestionSelected"
+                submit="onFetchOpp"
+                tooltip="Type to search, then press Enter to load" editable="true">
+              <layoutData><l:GridData id="_IDGenGridData1" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- ← ADD THIS BLOCK RIGHT HERE — Row 1b L: Quote ID row (visible only in Quote context) -->
+<Label id="idlblquoteid" text="Quote ID"
+    visible="{= ${oSCDetail>/isQuoteContext} === true }"/>
+<Input id="idquoteid"
+    value="{oSCDetail>/quoteId}"
+    editable="false"
+    tooltip="Sales Quote ID passed from C4C"
+    visible="{= ${oSCDetail>/isQuoteContext} === true }">
+  <layoutData><l:GridData id="_IDGenGridData_quoteId" span="XL7 L7 M12 S12"/></layoutData>
+</Input>
+<!-- ── END Quote ID row ── -->
+
+            <!-- Row 2 L: Status -->
+            <Label id="idlblstatus" text="{i18n>stat}"/>
+            <!-- <ComboBox id="idstatus" selectionChange="onComboBoxtype" editable="false" enabled="false" >
+                <core:Item id="_IDGenItem" key="In Progress"       text="{i18n>prog}"/>
+                <core:Item id="_IDGenItem1" key="Structuring"        text="{i18n>str}"/>
+                <core:Item id="_IDGenItem2" key="In Approval"        text="{i18n>inApp}"/>
+                <core:Item id="_IDGenItem3" key="Approved"           text="{i18n>appr}"/>
+                <core:Item id="_IDGenItem4" key="Rejected"           text="{i18n>rej}"/>
+                <core:Item id="_IDGenItem5" key="Contract Sign-Off"  text="{i18n>con}"/>
+                <core:Item id="_IDGenItem6" key="Closed"             text="{i18n>close}"/>
+                <layoutData><l:GridData id="_IDGenGridData2" span="XL7 L7 M12 S12"/></layoutData>
+            </ComboBox> -->
+            <!-- <Input id="idstatus" 
+                   value="{oSCDetail>/status}" 
+                   editable="false"
+                    tooltip="Status is managed by SAP Sales Cloud">
+               <layoutData>
+                  <l:GridData id="_IDGenGridData2" span="XL7 L7 M12 S12"/>
+                </layoutData>
+            </Input> -->
+            <!-- Opportunity context: status is read-only, managed by SAP Sales Cloud -->
+<Input id="idstatus"
+       value="{oSCDetail>/status}"
+       editable="false"
+       tooltip="Status is managed by SAP Sales Cloud"
+       visible="{= ${oSCDetail>/isQuoteContext} === false }">
+    <layoutData>
+        <l:GridData id="_IDGenGridData2" span="XL7 L7 M12 S12"/>
+    </layoutData>
+</Input>
+
+<!-- Quote context: status is editable with fixed allowed values -->
+<ComboBox id="idQuoteStatus"
+          selectedKey="{oSCDetail>/status}"
+          visible="{= ${oSCDetail>/isQuoteContext} === true }"
+          enabled="false"
+          tooltip="Quote status">
+    <items>
+        <core:Item id="_IDGenItem1" key="Open"        text="Open"/>
+        <core:Item id="_IDGenItem2" key="In Progress" text="In Progress"/>
+        <core:Item id="_IDGenItem3" key="Structuring" text="Structuring"/>
+        <core:Item id="_IDGenItem4" key="Won"         text="Won"/>
+        <core:Item id="_IDGenItem5" key="Lost"        text="Lost"/>
+        <core:Item id="_IDGenItem6" key="Closed"      text="Closed"/>
+    </items>
+    <layoutData>
+        <l:GridData id="_IDGenGridData" span="XL7 L7 M12 S12"/>
+    </layoutData>
+</ComboBox>
+            <!-- Change 1 — ADD Sales Phase after Status Input: -->
+<Label id="idlblsalesPhase" text="Sales Phase"/>
+    <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }"/> -->
+<ComboBox id="idsalesPhase"
+    selectedKey="{oSCDetail>/salesPhase}"
+    selectionChange="onSalesPhaseChange">
+    <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }">/ -->
+    <layoutData>
+        <l:GridData id="_IDGenGridData_salesphase" span="XL7 L7 M12 S12"/>
+    </layoutData>
+</ComboBox>
+            <!-- Row 3 L: Size of Opportunity -->
+            <Label id="idlblsize" text="{i18n>sizeopp}"/>
+            <Input id="idsize" value="{oSCDetail>/sizeofOpp}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData3" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 4 L: Annual Subscribed Load -->
+            <Label id="idlblsubs" text="{i18n>anualsubs}"/>
+            <Input id="idsubs" value="{oSCDetail>/annualSubs}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData4" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 5 L: Contract Lifetime Value -->
+            <Label id="idlblcontract" text="{i18n>conlife}"/>
+            <Input id="idcontract" value="{oSCDetail>/contLifetimeval}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData5" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 6 L: Price Structure -->
+            <Label id="idlblEmerConNme_CC" text="{i18n>pricestr}"/>
+            <ComboBox id="idMode_CS" selectionChange="onComboBoxtype">
+                <core:Item id="_IDGenItem7" key="REC Blend"  text="REC Blend"/>
+                <core:Item id="_IDGenItem8" key="Full Price" text="Full Price"/>
+                <layoutData><l:GridData id="_IDGenGridData6" span="XL7 L7 M12 S12"/></layoutData>
+            </ComboBox>
+
+            <!-- Row 7 L: NTE Price -->
+            <Label id="idlblnte" text="{i18n>nte}"/>
+            <Input id="idnte" value="{oSCDetail>/nte}">
+              <layoutData><l:GridData id="_IDGenGridData7" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 8 L: Metered Consumption (LCVP only, hidden by default) -->
+            <Label id="idlblmtrcon" text="{i18n>mtrcon}" visible="false"/>
+            <Input id="idmtrcon" value="{oSCDetail>/meteredCon}" editable="false" visible="false">
+              <layoutData><l:GridData id="_IDGenGridData8" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 9 L: Commencement Letter Sent (LCVP, Sales Admins) -->
+            <Label id="idlblcommLetterSent" text="Commencement Letter Sent" visible="false"/>
+            <CheckBox id="idcommLetterSent"
+                selected="{path: 'oSCDetail>/commencementLetterSent', type: 'sap.ui.model.type.Boolean'}"
+                visible="false"
+                tooltip="Indicator only — no downstream impact (FDD #11)">
+              <layoutData><l:GridData id="_IDGenGridData9" span="XL7 L7 M12 S12"/></layoutData>
+            </CheckBox>
+
+            <!-- Row 10 L: Enrolled — free-text display, comma-separated values from CR&B -->
+            <!-- e.g. "MIGP-FIXED" | "MIGP-FLEX" | "LCVP" | "MIGP-FLEX,LCVP" (FDD #13) -->
+            <Label id="idlblenrolled" text="Enrolled"/>
+            <Input id="idenrolled" value="{oSCDetail>/enrolled}" editable="false"
+                tooltip="Values returned by CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP (comma-separated if multiple)">
+              <layoutData><l:GridData id="_IDGenGridData10" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- ════════ RIGHT COLUMN ════════ -->
+            <core:Title id="_IDGenTitle2_CC"/>
+
+            <!-- Row 1 R: Opportunity Category -->
+            <Label id="idlblEmerConName_CC" text="{i18n>oppcat}"/>
+            <ComboBox id="idModel_CS" selectionChange="onComboBoxtype" editable="true">
+                <core:Item id="_IDGenItem9" key="MIGP - Small Business" text="MIGP - Small Business"/>
+                <core:Item id="_IDGenItem10" key="MIGP - LCVP"                  text="MIGP - LCVP"/>
+                <layoutData><l:GridData id="_IDGenGridData11" span="XL7 L7 M12 S12"/></layoutData>
+            </ComboBox>
+
+            <!-- Row 2 R: Term (LCVP, hidden by default) -->
+            <Label id="idlterm" text="{i18n>term}" visible="false"/>
+            <Input id="idterm" value="{oSCDetail>/term}" editable="false" visible="false">
+              <layoutData><l:GridData id="_IDGenGridData12" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 3 R: Gross Annual Usage -->
+            <Label id="idlblusage" text="{i18n>grossusage}"/>
+            <Input id="idusage" value="{oSCDetail>/annualGross}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData13" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 4 R: Estimated Subscription % -->
+            <Label id="idlblpusage" text="{i18n>subest}"/>
+            <Input id="idpusage" value="{oSCDetail>/percentUsage}" description="%">
+              <layoutData><l:GridData id="_IDGenGridData14" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 5 R: Annual MWh Size at Closure -->
+            <!-- <Label id="idlblclosure" text="{i18n>annclosure}"/>
+            <Input id="idclosure" value="{oSCDetail>/annualMWh}">
+              <layoutData><l:GridData id="_IDGenGridData15" span="XL7 L7 M12 S12"/></layoutData>
+            </Input> -->
+
+            <!-- Row 6 R: Opportunity Subscribed Load -->
+            <Label id="idlblfee" text="{i18n>oppsubs}"/>
+            <Input id="idfee" value="{oSCDetail>/oppSubs}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData16" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 7 R: Sales Type -->
+            <Label id="idlblEmerCnNme_CC" text="{i18n>salestyp}"/>
+            <ComboBox id="idMode_S" selectionChange="onComboBoxtype">
+                <core:Item id="_IDGenItem11" key="New"           text="New Sale"/>
+                <core:Item id="_IDGenItem12" key="Amendment"     text="Amendment"/>
+                <core:Item id="_IDGenItem13" key="Renewal"       text="Renewal"/>
+                <core:Item id="_IDGenItem14" key="One-time Sale" text="One-time Sale"/>
+                <layoutData><l:GridData id="_IDGenGridData17" span="XL7 L7 M12 S12"/></layoutData>
+            </ComboBox>
+
+            <!-- Row 8 R: Unmetered Consumption (LCVP only, hidden by default) -->
+            <Label id="idlblunmtrcon" text="{i18n>unmtrcon}" visible="false"/>
+            <Input id="idunmtrcon" value="{oSCDetail>/unmeteredCon}" editable="false" visible="false">
+              <layoutData><l:GridData id="_IDGenGridData18" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Row 9 R: Commencement Letter Signed (LCVP, Sales Admins) -->
+            <Label id="idlblcommLetterSigned" text="Commencement Letter Signed" visible="false"/>
+            <CheckBox id="idcommLetterSigned"
+                selected="{path: 'oSCDetail>/commencementLetterSigned', type: 'sap.ui.model.type.Boolean'}"
+                visible="false"
+                tooltip="Indicator only — no downstream impact (FDD #12)">
+              <layoutData><l:GridData id="_IDGenGridData19" span="XL7 L7 M12 S12"/></layoutData>
+            </CheckBox>
+
+            <!-- Row 10 R: Include in Upcoming Pipeline -->
+            <Label id="idlblincludePipeline" text="Include in Upcoming Pipeline"/>
+            <CheckBox id="idincludePipeline"
+                selected="{path: 'oSCDetail>/includeInPipeline', type: 'sap.ui.model.type.Boolean'}"
+                tooltip="Reporting indicator for weekly pipeline meetings (FDD #18)">
+              <layoutData><l:GridData id="_IDGenGridData20" span="XL7 L7 M12 S12"/></layoutData>
+            </CheckBox>
+            <!-- Last Fetch timestamp — read-only header field -->
+<Label id="idlblLastFetch" text="Last Fetched"/>
+<Input id="idLastFetch"
+    value="{oSCDetail>/lastFetchedAt}"
+    editable="false"
+    tooltip="Date and time of the last CA Fetch/Validate for this Opportunity">
+  <layoutData><l:GridData id="_IDGenGridData_lastFetch" span="XL7 L7 M12 S12"/></layoutData>
+</Input>
+            <!-- Enrollment Referral Code — SMB only -->
+            <Label id="idlblReferralCode" text="Referral Code"
+                visible="{= ${oSCDetail>/oppCategory} === 'MIGP - Small Business' }"/>
+            <Input id="idReferralCode"
+                value="{oSCDetail>/enrollmentReferralCode}"
+                maxLength="15"
+                placeholder="e.g. TONY"
+                tooltip="Enrollment Referral Code — corresponds to ISU table entry"
+                visible="{= ${oSCDetail>/oppCategory} === 'MIGP - Small Business' }">
+              <layoutData><l:GridData id="_IDGenGridData15" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            <!-- Enrollment Email ID — SMB only -->
+            <Label id="idlblEnrollmentEmail" text="Enrollment Email ID"
+                visible="{= ${oSCDetail>/oppCategory} === 'MIGP - Small Business' }"/>
+            <Input id="idEnrollmentEmail"
+                value="{oSCDetail>/enrollmentEmailId}"
+                placeholder="email@example.com"
+                tooltip="Email ID for MIGP welcome letter"
+                visible="{= ${oSCDetail>/oppCategory} === 'MIGP - Small Business' }">
+              <layoutData><l:GridData id="_IDGenGridData21" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+         
+          </form:content>
+        </form:SimpleForm>
+
+    </content>
+
+    <!-- ═════════════════════════════════════════════════════════════════════
+         TABS — FDD Section 5.4
+    ══════════════════════════════════════════════════════════════════════ -->
+    <IconTabBar id="idIconTabBarNoIcons" expanded="{device>/isNoPhone}" class="sapUiResponsiveContentPadding">
+      <items>
+
+        <!-- ── TAB 1: Involved Parties (FDD Tab#1) ─────────────────────── -->
+        <IconTabFilter id="_IDGenIconTabFilter" text="{i18n>invparty}" key="info">
+          <OverflowToolbar id="idToolbarIP">
+    <ToolbarSpacer id="idSpacerIP"/>
+    <Button id="idbtnIPSort" icon="sap-icon://sort" type="Ghost"
+            tooltip="Sort and Filter Involved Parties"
+            press="onSortFilterIP"/>
+  </OverflowToolbar>
+          <Table id="table" items="{oOpportunityjmodel>/InvolvedParties}">
+            <columns>
+              <Column id="_IDGenColumn"><Text id="_IDGenText" text="{i18n>buspartner}"/></Column>
+              <Column id="_IDGenColumn1"><Text id="_IDGenText2" text="{i18n>role}"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem id="_IDGenColumnListItem">
+                <cells>
+                  <Text id="_IDGenText3" text="{oOpportunityjmodel>buspartner}"/>
+                  <Text id="_IDGenText4" text="{oOpportunityjmodel>role}"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </IconTabFilter>
+
+        <IconTabSeparator id="_IDGenIconTabSeparator"/>
+
+        <!-- ── TAB 2: CA Consumption Details (FDD Tab#2) ──────────────── -->
+<IconTabFilter id="_IDGenIconTabFilter1" text="{i18n>consumption}" key="attachments">
+  <!-- Last Fetch / Validate Timestamps -->
+<!-- <HBox id="_IDGenHBox1" alignItems="Center" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
+    <HBox id="_IDGenHBox3" alignItems="Center" visible="{oOpportunityjmodel>/lastValidateVisible}">
+        <core:Icon id="_IDGenIcon1" src="sap-icon://accept" color="#107e3e" class="sapUiTinyMarginEnd"/>
+        <Text id="_IDGenText75" text="Last Validated: {oOpportunityjmodel>/lastValidateTime}"/>
+    </HBox>
+</HBox> -->
+  <OverflowToolbar id="_IDGenOverflowToolbar">
+    <!-- <ToolbarSpacer id="_IDGenToolbarSpacer"/>
+    <Button id="IDverify" text="Fetch/Validate CA" press="onfetchCA" type="Ghost"/> -->
+    <ToolbarSpacer id="_IDGenToolbarSpacer"/>
+        <!-- <core:Icon id="_IDGenIcon"  color="#0070b1" class="sapUiTinyMarginEnd" visible="{oOpportunityjmodel>/lastFetchVisible}"/>
+        <Text id="_IDGenText74" text="Last Fetch: {oOpportunityjmodel>/lastFetchTime}" class="sapUiSmallMarginEnd" visible="{oOpportunityjmodel>/lastFetchVisible}"/> -->
+    <Button id="idbtnCASort" icon="sap-icon://sort" type="Ghost"
+            tooltip="Sort and Filter Contract Accounts"
+            press="onSortFilterCA"/>
+    <Button id="IDverify" text="Fetch/Validate CA" press="onfetchCA" type="Ghost"/>
+  </OverflowToolbar>
+
+  <Table id="tableISUCA" growingThreshold="50" alternateRowColors="true"
+         items="{oOpportunityjmodel>/ConsumptionDetails}">
+    <columns>
+      <Column id="_IDGenColumn2">
+        <!-- Select All checkbox in column header -->
+        <CheckBox id="idSelectAllCA" selected="false" select="onSelectAllCA"
+                  tooltip="Select / Deselect all Contract Accounts"/>
+      </Column>
+      <Column id="_IDGenColumn3" sortIndicator="None">
+        <Text id="_IDGenText6" text="{i18n>conacc}"/>
+      </Column>
+      <Column id="_IDGenColumn4" sortIndicator="None">
+        <Text id="_IDGenText7" text="{i18n>buspartner}"/>
+      </Column>
+      <Column id="_IDGenColumn5" sortIndicator="None">
+        <Text id="_IDGenText8" text="{i18n>estusage}"/>
+      </Column>
+      <Column id="_IDGenColumn6"><Text id="_IDGenText10" text="Metered"/></Column>
+      <Column id="_IDGenColumn7"><Text id="_IDGenText11" text="60-Day Arrear"/></Column>
+      <Column id="_IDGenColumn8"><Text id="_IDGenText12" text="2-NSF"/></Column>
+      <Column id="_IDGenColumn9"><Text id="_IDGenText13" text="{i18n>replCA}"/></Column>
+      <Column id="_IDGenColumn10"><Text id="_IDGenText14" text="Inactive"/></Column>
+      <Column id="_IDGenColumn11"><Text id="_IDGenText15" text="{i18n>c20}"/></Column>
+      <Column id="_IDGenColumn12"><Text id="_IDGenText16" text="{i18n>pcid}"/></Column>
+      <Column id="_IDGenColumn13">
+        <Text id="_IDGenText17" text="Enrolled"
+              tooltip="Values from CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP"/>
+      </Column>
+      <Column id="_IDGenColumn14"><Text id="_IDGenText18" text="{i18n>val}"/></Column>
+    </columns>
+    <items>
+      <ColumnListItem id="_IDGenColumnListItem1">
+        <cells>
+          <CheckBox id="_IDGenCheckBox"
+                    selected="{path: 'oOpportunityjmodel>selected', type: 'sap.ui.model.type.Boolean'}"
+                    select="onCARowSelect"/>
+          <Text id="_IDGenText19" text="{oOpportunityjmodel>contacc}"/>
+          <Text id="_IDGenText20" text="{oOpportunityjmodel>buspartner}"/>
+          <Text id="_IDGenText21" text="{oOpportunityjmodel>est12month}"/>
+          <Text id="_IDGenText22" text="{oOpportunityjmodel>metered}"/>
+          <Text id="_IDGenText23" text="{oOpportunityjmodel>arrear60}"/>
+          <Text id="_IDGenText24" text="{oOpportunityjmodel>nsfFlag}"/>
+          <Text id="_IDGenText25" text="{oOpportunityjmodel>replacementCA}"/>
+          <Text id="_IDGenText26" text="{oOpportunityjmodel>inactive}"/>
+          <Text id="_IDGenText27" text="{oOpportunityjmodel>cycle20}"/>
+          <Text id="_IDGenText28" text="{oOpportunityjmodel>providercontractId}"/>
+          <Text id="_IDGenText29" text="{oOpportunityjmodel>enrolled}"/>
+          <Text id="_IDGenText30" text="{oOpportunityjmodel>validity}"/>
+        </cells>
+      </ColumnListItem>
+    </items>
+  </Table>
+
+          <Table id="tablesaveCA" growingThreshold="50" visible="false" alternateRowColors="true"
+                 items="{oOpportunityjmodel>/ConsumptionDetails}">
+            <columns>
+              <Column id="_IDGenColumn15"><Text id="_IDGenText31" text="{i18n>conacc}"/></Column>
+              <Column id="_IDGenColumn16"><Text id="_IDGenText32" text="{i18n>buspartner}"/></Column>
+              <Column id="_IDGenColumn17"><Text id="_IDGenText33" text="{i18n>val}"/></Column>
+              <Column id="_IDGenColumn18"><Text id="_IDGenText34" text="{i18n>replCA}"/></Column>
+              <Column id="_IDGenColumn19"><Text id="_IDGenText35" text="{i18n>estusage}"/></Column>
+              <Column id="_IDGenColumn20"><Text id="_IDGenText36" text="{i18n>met}"/></Column>
+              <Column id="_IDGenColumn21"><Text id="_IDGenText37" text="{i18n>unmet}"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem id="_IDGenColumnListItem2">
+                <cells>
+                  <Text id="_IDGenText38" text="{oOpportunityjmodel>contacc}"/>
+                  <Text id="_IDGenText39" text="{oOpportunityjmodel>buspartner}"/>
+                  <Text id="_IDGenText40" text="{oOpportunityjmodel>validity}"/>
+                  <Text id="_IDGenText41" text="{oOpportunityjmodel>replacementCA}"/>
+                  <Text id="_IDGenText42" text="{oOpportunityjmodel>est12month}"/>
+                  <Text id="_IDGenText43" text="{oOpportunityjmodel>metered}"/>
+                  <Text id="_IDGenText44" text="{oOpportunityjmodel>cycle20}"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+
+        </IconTabFilter>
+
+        <IconTabSeparator id="_IDGenIconTabSeparator1"/>
+
+        <!-- ── TAB 3: Provider Contract (FDD Tab#3) ───────────────────── -->
+        <IconTabFilter id="_IDGenIconTabFilter3" text="Provider Contract" key="notes">
+
+          <OverflowToolbar id="_IDGenOverflowToolbar1">
+            <ToolbarSpacer id="_IDGenToolbarSpacer1"/>
+            <Button id="idbtnPCSort" icon="sap-icon://sort" type="Ghost"
+            tooltip="Sort and Filter Provider Contracts"
+            press="onSortFilterPC"/>
+   
+            <!-- Cycle20 and Enroll buttons removed — no auto/manual enrollment per design change -->
+            <Button id="IDcalculate" text="Calculate" press="oncalc" type="Ghost"/>
+          </OverflowToolbar>
+
+          <!-- SMB table -->
+          <Table id="tablesmall" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
+            <columns>
+              <Column id="_IDGenColumn22"><Text id="_IDGenText45" text="Product"/></Column>
+              <Column id="_IDGenColumn23"><Text id="_IDGenText46" text="Portfolio"/></Column>
+              <Column id="_IDGenColumn24"><Text id="_IDGenText47" text="Fixed price"/></Column>
+              <Column id="_IDGenColumn25"><Text id="_IDGenText48" text="Subscription Fee ($/MWh)"/></Column>
+              <Column id="_IDGenColumn26"><Text id="_IDGenText49" text="Subscription %"/></Column>
+              <Column id="_IDGenColumn27"><Text id="_IDGenText50" text="Start Date"/></Column>
+              <Column id="_IDGenColumn28"><Text id="_IDGenText51" text="End Date"/></Column>
+              <Column id="_IDGenColumn29"><Text id="_IDGenText52" text="Est. Usage (MWh)"/></Column>
+              <!-- BTP suggestion #4 -->
+              <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column>
+              <Column id="_IDGenColumn30b"><Text id="_IDGenText5" text="Export"/></Column>
+              <Column id="_IDGenColumn31"><Text id="_IDGenText54" text="Export Date"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem id="_IDGenColumnListItem3">
+                <cells>
+                  <Input id="_IDGenInput" value="{oOpportunityjmodel>product}"/>
+                  <Input id="_IDGenInput1" value="{oOpportunityjmodel>portfolio}"/>
+                  <Input id="_IDGenInput2" value="{oOpportunityjmodel>fixedPrice}"
+                         change="onFixedOrFlexChange"
+                         placeholder="Fixed $"
+                         tooltip="Enter Fixed Price OR Subscription Fee — not both (BTP #6)"/>
+                  <Input id="_IDGenInput3" value="{oOpportunityjmodel>portfolioprice}"
+                         change="onFixedOrFlexChange"
+                         placeholder="Flex $/MWh"
+                         tooltip="Enter Subscription Fee OR Fixed Price — not both (BTP #6)"/>
+                  <!-- <Input id="_IDGenInput4" value="{oOpportunityjmodel>subspercent}"/> -->
+                  <Select id="_IDGenInput4"
+    selectedKey="{oOpportunityjmodel>subspercent}">
+    <core:Item id="_IDGenItem16" key=""    text="Select %"/>
+    <core:Item id="_IDGenItem17" key="5"   text="5"/>
+    <core:Item id="_IDGenItem18" key="10"  text="10"/>
+    <core:Item id="_IDGenItem19" key="15"  text="15"/>
+    <core:Item id="_IDGenItem20" key="20"  text="20"/>
+    <core:Item id="_IDGenItem21" key="25"  text="25"/>
+    <core:Item id="_IDGenItem22" key="30"  text="30"/>
+    <core:Item id="_IDGenItem23" key="35"  text="35"/>
+    <core:Item id="_IDGenItem24" key="40"  text="40"/>
+    <core:Item id="_IDGenItem25" key="45"  text="45"/>
+    <core:Item id="_IDGenItem26" key="50"  text="50"/>
+    <core:Item id="_IDGenItem27" key="55"  text="55"/>
+    <core:Item id="_IDGenItem28" key="60"  text="60"/>
+    <core:Item id="_IDGenItem29" key="65"  text="65"/>
+    <core:Item id="_IDGenItem30" key="70"  text="70"/>
+    <core:Item id="_IDGenItem31" key="75"  text="75"/>
+    <core:Item id="_IDGenItem32" key="80"  text="80"/>
+    <core:Item id="_IDGenItem33" key="85"  text="85"/>
+    <core:Item id="_IDGenItem34" key="90"  text="90"/>
+    <core:Item id="_IDGenItem35" key="95"  text="95"/>
+    <core:Item id="_IDGenItem56" key="100" text="100"/>
+</Select>
+                  <Input id="_IDGenInput5" value="{oOpportunityjmodel>startDate}" editable="true" />
+                  <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/>
+                  <!-- BTP suggestion #4: Enroll checkbox per row -->
+                  <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/>
+                  <CheckBox id="_IDGenCheckBox1b"
+    selected="{oOpportunityjmodel>exportChk}"/>
+                  <Input id="_IDGenInput8" value="{oOpportunityjmodel>exportDate}" editable="true"
+                         placeholder="Auto-filled on export"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+
+          <!-- LCVP table -->
+          <Table id="tablelarge" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
+            <columns>
+              <Column id="_IDGenColumn32"><Text id="_IDGenText55" text="Product"/></Column>
+              <Column id="_IDGenColumn33"><Text id="_IDGenText56" text="Portfolio"/></Column>
+              <!-- BTP #6: Fixed MWh XOR Subscription Fee — not both in same row -->
+              <Column id="_IDGenColumn34"><Text id="_IDGenText57" text="Fixed MWh" tooltip="LCVP Fixed MWh (One-time Sale). Enter this OR Subscription Fee, not both."/></Column>
+              <Column id="_IDGenColumn35"><Text id="_IDGenText58" text="Subscription Fee ($/MWh)" tooltip="Flex subscription fee. Enter this OR Fixed MWh, not both."/></Column>
+              <Column id="_IDGenColumn36"><Text id="_IDGenText59" text="Subscription %"/></Column>
+              <Column id="_IDGenColumn37"><Text id="_IDGenText60" text="Start Date"/></Column>
+              <Column id="_IDGenColumn38"><Text id="_IDGenText61" text="End Date"/></Column>
+              <Column id="_IDGenColumn39"><Text id="_IDGenText62" text="Est. Usage (MWh)"/></Column>
+              <Column id="_IDGenColumn40"><Text id="_IDGenText63" text="REC Price"/></Column>
+              <Column id="_IDGenColumn41"><Text id="_IDGenText64" text="MIGP (%)"/></Column>
+              <Column id="_IDGenColumn42"><Text id="_IDGenText65" text="REC (%)"/></Column>
+              <Column id="_IDGenColumn43"><Text id="_IDGenText66" text="MIGP MWh"/></Column>
+              <Column id="_IDGenColumn44"><Text id="_IDGenText67" text="REC MWh"/></Column>
+              <!-- BTP suggestion #4 -->
+              <Column id="_IDGenColumn45"><Text id="_IDGenText68" text="Enroll"/></Column>
+              <Column id="_IDGenColumn45b"><Text id="_IDGenText73" text="Export"/></Column>   
+              <Column id="_IDGenColumn46"><Text id="_IDGenText69" text="Export Date"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem id="_IDGenColumnListItem4">
+                <cells>
+                  <Input id="_IDGenInput9" value="{oOpportunityjmodel>product}"/>
+                  <Input id="_IDGenInput10" value="{oOpportunityjmodel>portfolio}"/>
+                  <Input id="_IDGenInput11" value="{oOpportunityjmodel>fixedMWh}"
+                         placeholder="Fixed MWh"
+                         tooltip="Enter Fixed MWh OR Subscription Fee — not both (BTP #6)"/>
+                  <Input id="_IDGenInput12" value="{oOpportunityjmodel>portfolioprice}"
+                         placeholder="Flex $/MWh"
+                         tooltip="Enter Subscription Fee OR Fixed MWh — not both (BTP #6)"/>
+                  <!-- <Input id="_IDGenInput13" value="{oOpportunityjmodel>subspercent}"/> -->
+                 <Select id="_IDGenInput13"
+    selectedKey="{oOpportunityjmodel>subspercent}">
+    <core:Item id="_IDGenItem36" key=""    text="Select %"/>
+    <core:Item id="_IDGenItem37" key="5"   text="5"/>
+    <core:Item id="_IDGenItem38" key="10"  text="10"/>
+    <core:Item id="_IDGenItem39" key="15"  text="15"/>
+    <core:Item id="_IDGenItem40" key="20"  text="20"/>
+    <core:Item id="_IDGenItem41" key="25"  text="25"/>
+    <core:Item id="_IDGenItem42" key="30"  text="30"/>
+    <core:Item id="_IDGenItem43" key="35"  text="35"/>
+    <core:Item id="_IDGenItem44" key="40"  text="40"/>
+    <core:Item id="_IDGenItem45" key="45"  text="45"/>
+    <core:Item id="_IDGenItem46" key="50"  text="50"/>
+    <core:Item id="_IDGenItem47" key="55"  text="55"/>
+    <core:Item id="_IDGenItem48" key="60"  text="60"/>
+    <core:Item id="_IDGenItem49" key="65"  text="65"/>
+    <core:Item id="_IDGenItem50" key="70"  text="70"/>
+    <core:Item id="_IDGenItem51" key="75"  text="75"/>
+    <core:Item id="_IDGenItem52" key="80"  text="80"/>
+    <core:Item id="_IDGenItem53" key="85"  text="85"/>
+    <core:Item id="_IDGenItem54" key="90"  text="90"/>
+    <core:Item id="_IDGenItem55" key="95"  text="95"/>
+    <core:Item id="_IDGenItem57" key="100" text="100"/>
+</Select>
+                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="true" />
+                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <Input id="_IDGenInput16" value="{oOpportunityjmodel>estUsage}"    editable="false"/>
+                  <Input id="_IDGenInput17" value="{oOpportunityjmodel>recPrice}"/>
+                  <Input id="_IDGenInput18" value="{oOpportunityjmodel>migpPercent}" editable="false"/>
+                  <Input id="_IDGenInput19" value="{oOpportunityjmodel>recpercent}"  editable="false"/>
+                  <Input id="_IDGenInput20" value="{oOpportunityjmodel>migpMWh}"     editable="false"/>
+                  <Input id="_IDGenInput21" value="{oOpportunityjmodel>recMWh}"      editable="false"/>
+                  <!-- BTP suggestion #4: Enroll checkbox per row -->
+                  <CheckBox id="_IDGenCheckBox2" selected="{oOpportunityjmodel>enrollChk}"/>
+                  <CheckBox id="_IDGenCheckBox2b"
+    selected="{oOpportunityjmodel>exportChk}"/>  
+                  <Input id="_IDGenInput22" value="{oOpportunityjmodel>exportDate}"  editable="true" showClearIcon="true"
+                         placeholder="Auto-filled on export"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+          <!-- Summary / Weighted Average bar — visible only when 2+ LCVP rows exist after Calculate -->
+<!-- Values written to oSCDetail by oncalc STEP 9; hidden on re-fetch or category change  -->
+<HBox id="idSummaryLineBox" visible="false"
+      class="sapUiSmallMarginTop sapUiSmallMarginBegin sapUiSmallMarginBottom">
+  <items>
+    <VBox id="_IDGenVBox1" class="sapUiSmallMarginEnd" justifyContent="End">
+      <items>
+        <Label id="_IDGenLabel" text="Summary (Wt. Avg)" design="Bold" />
+      </items>
+    </VBox>
+    <VBox id="_IDGenVBox2" class="sapUiSmallMarginEnd">
+      <items>
+        <Label id="_IDGenLabel1" text="Sub Fee ($)" />
+        <Input id="idSumSubFee"  value="{oSCDetail>/summarySubFee}"
+               editable="false" width="9rem" />
+      </items>
+    </VBox>
+    <VBox id="_IDGenVBox3" class="sapUiSmallMarginEnd">
+      <items>
+        <Label id="_IDGenLabel2" text="Sub %" />
+        <Input id="idSumSubPct"  value="{oSCDetail>/summarySubPct}"
+               editable="false" width="8rem" />
+      </items>
+    </VBox>
+    <VBox id="_IDGenVBox4" class="sapUiSmallMarginEnd">
+      <items>
+        <Label id="_IDGenLabel3" text="MIGP %" />
+        <Input id="idSumMigpPct" value="{oSCDetail>/summaryMigpPct}"
+               editable="false" width="8rem" />
+      </items>
+    </VBox>
+    <VBox id="_IDGenVBox5">
+      <items>
+        <Label id="_IDGenLabel4" text="REC %" />
+        <Input id="idSumRecPct"  value="{oSCDetail>/summaryRecPct}"
+               editable="false" width="8rem" />
+      </items>
+    </VBox>
+  </items>
+</HBox>
+          <content>
+            <OverflowToolbar id="_IDGenOverflowToolbar2">
+              <ToolbarSpacer id="_IDGenToolbarSpacer2"/>
+              <!-- FDD Export spec: available for both SMB & LCVP, disabled for One-time Sale (FDD #51) -->
+              <Button id="idbtnExport" text="Export File" type="Ghost" icon="sap-icon://download"
+                      press="onExportFile"
+                      tooltip="Export Provider Contract details for selected CAs to Excel. Disabled for One-time Sale."/>
+            </OverflowToolbar>
+          </content>
+
+        </IconTabFilter>
+
+        <IconTabSeparator id="_IDGenIconTabSeparator2"/>
+
+        <!-- ── TAB 4: Prospect / Dummy CA (FDD Tab#4, Req#36) ─────────── -->
+        <IconTabFilter id="_IDGenIconTabFilter4" text="Prospect" key="attachments2">
+
+          <OverflowToolbar id="_IDGenOverflowToolbar3">
+            <ToolbarSpacer id="_IDGenToolbarSpacer3"/>
+            <Button id="idbtnPRSort" icon="sap-icon://sort" type="Ghost"
+            tooltip="Sort and Filter Prospects"
+            press="onSortFilterPR"/>
+            <Button id="idbtn_addnewRow_Fuses" type="Emphasized" icon="sap-icon://add"
+                    press="onAddnewProspectRow"
+                    tooltip="Add a Dummy CA with projected consumption (FDD Req#36)"/>
+          </OverflowToolbar>
+
+          <Table id="table11" items="{oOpportunityjmodel>/Prospects}">
+            <columns>
+              <Column id="_IDGenColumn47"><Text id="_IDGenText70" text="Site Address (General Location)"/></Column>
+              <Column id="_IDGenColumn48"><Text id="_IDGenText71" text="Projected Consumption"/></Column>
+              <Column id="_IDGenColumn49"><Text id="_IDGenText72" text="Year"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem id="_IDGenColumnListItem5">
+                <cells>
+                  <Input id="_IDGenInput23" value="{oOpportunityjmodel>siteAddLoc}"/>
+                  <Input id="_IDGenInput24" value="{oOpportunityjmodel>projectedCon}"/>
+                  <Input id="_IDGenInput25" value="{oOpportunityjmodel>year}"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+
+        </IconTabFilter>
+
+      </items>
+    </IconTabBar>
+
+    <!-- Footer -->
+    <footer>
+      <OverflowToolbar id="_IDGenOverflowToolbar4">
+        <ToolbarSpacer id="_IDGenToolbarSpacer4"/>
+        <Button id="_IDButton_postgresav" type="Ghost" text="Save" icon="sap-icon://edit"
+                press="onSaveopp" visible="true"/>
+      </OverflowToolbar>
+    </footer>
+
+    </Page>
+</mvc:View>

@@ -1,0 +1,181 @@
+### =============================================
+### CAP CPI Endpoint Tests
+### =============================================
+### Use with VS Code REST Client extension
+### Install: REST Client by Huachao Mao
+### =============================================
+
+@baseUrl = http://localhost:4004/odata/v4/cpi
+
+### -----------------------------------------------
+### 1. Check Service Metadata
+### -----------------------------------------------
+GET {{baseUrl}}/$metadata
+Content-Type: application/json
+
+### -----------------------------------------------
+### 2. Push New Opportunity (INSERT case)
+### -----------------------------------------------
+POST {{baseUrl}}/PushOpportunityFromCPI
+Content-Type: application/json
+
+{
+  "opp": {
+    "Oppid": "OPP-1003",
+    "contractid": "CON-2003",
+    "oppCategory": "New Business",
+    "status": "Open"
+  },
+  "involvedParties": [
+    {
+      "buspartner": "BP-003",
+      "role": "Sold-To Party"
+    },
+    {
+      "buspartner": "BP-003",
+      "role": "Ship-To Party"
+    }
+  ],
+  "providerContracts": [
+    {
+      "product": "PROD-003",
+      "startDate": "2025-01-01",
+      "endDate": "2025-12-31"
+    }
+  ]
+}
+
+### -----------------------------------------------
+### 3. Push Same Opportunity Again (UPDATE case)
+### -----------------------------------------------
+POST {{baseUrl}}/PushOpportunityFromCPI
+Content-Type: application/json
+
+{
+  "opp": {
+    "Oppid": "OPP-1001",
+    "contractid": "CON-2001",
+    "oppCategory": "Existing Business",
+    "status": "In Progress"
+  },
+  "involvedParties": [
+    {
+      "buspartner": "BP-003",
+      "role": "Bill-To Party"
+    }
+  ],
+  "providerContracts": [
+    {
+      "product": "PROD-002",
+      "startDate": "2025-06-01",
+      "endDate": "2026-06-01"
+    }
+  ]
+}
+
+### -----------------------------------------------
+### 4. Push Opportunity with Empty Children
+### -----------------------------------------------
+POST {{baseUrl}}/PushOpportunityFromCPI
+Content-Type: application/json
+
+{
+  "opp": {
+    "Oppid": "OPP-1002",
+    "contractid": "CON-3001",
+    "oppCategory": "Renewal",
+    "status": "Open"
+  },
+  "involvedParties": [],
+  "providerContracts": []
+}
+
+### -----------------------------------------------
+### 5. Push Opportunity with Missing Oppid (400 Error case)
+### -----------------------------------------------
+POST {{baseUrl}}/PushOpportunityFromCPI
+Content-Type: application/json
+
+{
+  "opp": {
+    "contractid": "CON-9999",
+    "oppCategory": "New Business",
+    "status": "Open"
+  },
+  "involvedParties": [],
+  "providerContracts": []
+}
+
+### -----------------------------------------------
+### 6. Push Multiple Children
+### -----------------------------------------------
+POST {{baseUrl}}/PushOpportunityFromCPI
+Content-Type: application/json
+
+{
+  "opp": {
+    "Oppid": "OPP-1003",
+    "contractid": "CON-4001",
+    "oppCategory": "New Business",
+    "status": "Qualified"
+  },
+  "involvedParties": [
+    {
+      "buspartner": "BP-101",
+      "role": "Sold-To Party"
+    },
+    {
+      "buspartner": "BP-102",
+      "role": "Ship-To Party"
+    },
+    {
+      "buspartner": "BP-103",
+      "role": "Bill-To Party"
+    }
+  ],
+  "providerContracts": [
+    {
+      "product": "PROD-A",
+      "startDate": "2025-01-01",
+      "endDate": "2025-06-30"
+    },
+    {
+      "product": "PROD-B",
+      "startDate": "2025-07-01",
+      "endDate": "2025-12-31"
+    }
+  ]
+}
+
+### 7. Read All Opportunities
+GET http://localhost:4004/odata/v4/cloud/Opportunity
+Content-Type: application/json
+
+### 8. Read All Involved Parties
+GET http://localhost:4004/odata/v4/cloud/InvolvedParties
+Content-Type: application/json
+
+### 9. Read All Provider Contracts
+GET http://localhost:4004/odata/v4/cloud/ProviderContract
+Content-Type: application/json
+
+###
+
+POST http://localhost:4004/odata/v4/cpi/PushOpportunityFromCPI
+Content-Type: application/json
+Accept: application/json
+
+{
+  "opp": {
+    "Oppid": "OPP-1001",
+    "contractid": "CON-2001",
+    "oppCategory": "Existing Business",
+    "status": "In Progress"
+  },
+  "involvedParties": [
+    { "buspartner": "BP-003", "role": "Bill-To Party" }
+  ],
+  "providerContracts": [
+    { "product": "PROD-002", "startDate": "2025-06-01", "endDate": "2026-06-01" }
+  ]
+}

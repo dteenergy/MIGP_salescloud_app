@@ -1,0 +1,232 @@
+oncalc: function () {
+    var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
+    var oSCDetail = this.getView().getModel("oSCDetail");
+
+    if (!oTabModel || !oSCDetail) {
+        sap.m.MessageBox.error("Models not initialized. Please fetch opportunity first.");
+        return;
+    }
+
+    // ── STEP 1: Gross Annual Usage ────────────────────────────────
+    // Sum of est12month for ALL rows in ConsumptionDetails
+    var aCARows = oTabModel.getProperty("/ConsumptionDetails") || [];
+    var grossAnnualUsage = 0;
+    aCARows.forEach(function (oCA) {
+        grossAnnualUsage += parseFloat(oCA.est12month) || 0;
+    });
+    oSCDetail.setProperty("/annualGross", grossAnnualUsage.toFixed(4));
+    console.log("Gross Annual Usage:", grossAnnualUsage);
+
+    // ── STEP 2: Subscription % ────────────────────────────────────
+    // Field in oSCDetail: percentUsage
+    var subPercent = parseFloat(oSCDetail.getProperty("/percentUsage")) || 85;
+    if (subPercent < 1 || subPercent > 100) {
+        sap.m.MessageBox.error("Estimated Subscription Percentage must be between 1 and 100.");
+        return;
+    }
+
+    // ── STEP 3: Size of Opportunity ───────────────────────────────
+    // Field in oSCDetail: sizeofOpp
+    var sizeOfOpp = grossAnnualUsage * (subPercent / 100);
+    oSCDetail.setProperty("/sizeofOpp", sizeOfOpp.toFixed(4));
+    console.log("Size of Opportunity:", sizeOfOpp);
+
+    // ── STEP 4: Category and Price Structure ─────────────────────
+    // ComboBox id: idModel_CS → keys: "small" or "large"
+    // ComboBox id: idMode_CS  → keys: "REC Blend" or "Full Price"
+    var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
+    var sPriceStr = this.getView().byId("idMode_CS").getSelectedKey();
+    var bIsLCVP   = (sCategory === "large");
+    var bIsREC    = (sPriceStr === "REC Blend");
+
+    console.log("Category:", sCategory, "| REC Blend:", bIsREC);
+
+    // For SMB — only Size of Opportunity is needed, stop here
+    if (!bIsLCVP) {
+        sap.m.MessageBox.success(
+            "Calculations complete:\n" +
+            "Gross Annual Usage: "  + grossAnnualUsage.toFixed(2) + " MWh\n" +
+            "Size of Opportunity: " + sizeOfOpp.toFixed(2)        + " MWh"
+        );
+        return;
+    }
+
+    // ── STEP 5: Provider Contract rows ───────────────────────────
+    // Model path: oOpportunityjmodel>/ProviderContracts
+    // Fields used: portfolio, portfolioprice, subspercent,
+    //              fixedMWh, startDate, endDate,
+    //              recPrice (REC blend only)
+    var aRows = oTabModel.getProperty("/ProviderContracts") || [];
+    if (aRows.length === 0) {
+        sap.m.MessageBox.error("No Provider Contract rows found. Please add product details first.");
+        return;
+    }
+
+    // ── STEP 6: Validate required fields per row ──────────────────
+    for (var i = 0; i < aRows.length; i++) {
+        var oRow = aRows[i];
+        if (!oRow.portfolio) {
+            sap.m.MessageBox.error("Row " + (i + 1) + ": Portfolio is required.");
+            return;
+        }
+        if (!oRow.portfolioprice && !oRow.fixedMWh) {
+            sap.m.MessageBox.error("Row " + (i + 1) + ": Subscription Fee or Fixed MWh is required.");
+            return;
+        }
+        if (!oRow.startDate) {
+            sap.m.MessageBox.error("Row " + (i + 1) + ": Start Date is required.");
+            return;
+        }
+        if (!oRow.endDate) {
+            sap.m.MessageBox.error("Row " + (i + 1) + ": End Date is required for LCVP.");
+            return;
+        }
+        if (bIsREC && !oRow.recPrice) {
+            sap.m.MessageBox.error("Row " + (i + 1) + ": REC Price is required for REC Blending.");
+            return;
+        }
+    }
+
+    // ── STEP 7: Calculate term years per row ─────────────────────
+    // Term = (End Date - Start Date) in years, 2 decimals
+    // e.g. 6.25 = 6 years 3 months
+    var totalTermYears = 0;
+    aRows.forEach(function (oRow) {
+        var dStart    = new Date(oRow.startDate);
+        var dEnd      = new Date(oRow.endDate);
+        var termYears = 0;
+        if (!isNaN(dStart) && !isNaN(dEnd) && dEnd > dStart) {
+            var diffDays  = (dEnd - dStart) / (1000 * 60 * 60 * 24);
+            termYears     = parseFloat((diffDays / 365).toFixed(2));
+        }
+        oRow._termYears    = termYears;
+        totalTermYears    += termYears;
+    });
+
+    // Term header field — schema field: term (LCVP only)
+    oSCDetail.setProperty("/term", totalTermYears.toFixed(2));
+    console.log("Total Term Years:", totalTermYears);
+
+    // ── STEP 8: Per row MWh calculations ─────────────────────────
+    var nte = parseFloat(oSCDetail.getProperty("/nte")) || 0;
+
+    aRows.forEach(function (oRow) {
+        var subFee   = parseFloat(oRow.portfolioprice) || 0;
+        var subPct   = parseFloat(oRow.subspercent)    || 0;
+        var fixedMWh = parseFloat(oRow.fixedMWh)       || 0;
+        var recPrice = parseFloat(oRow.recPrice)        || 0;
+
+        // Est. Usage (MWh) = sizeOfOpp × subPct %
+        // Schema field: estUsage
+        var estUsage = sizeOfOpp * (subPct / 100);
+        oRow.estUsage = estUsage.toFixed(4);
+
+        if (bIsREC) {
+            // REC Blending formulas
+            // Schema fields: recMWh, migpMWh, migpPercent, recpercent
+            var divisor = recPrice - subFee;
+            if (divisor === 0) {
+                sap.m.MessageBox.error(
+                    "Row: REC Price and Subscription Fee cannot be equal."
+                );
+                oRow._calcMWh = 0;
+                return;
+            }
+            // REC MWh = (SizeOfOpp×NTE/(RECPrice-SubFee)) 
+            //           - (SubFee×SizeOfOpp/(RECPrice-SubFee))
+            var recMWh   = (sizeOfOpp * nte / divisor)
+                         - (subFee * sizeOfOpp / divisor);
+            var migpMWh  = sizeOfOpp - recMWh;
+            var migpPct  = (migpMWh / sizeOfOpp) * 100;
+            var recPct   = (recMWh  / sizeOfOpp) * 100;
+
+            // Write back to row — schema field names
+            oRow.recMWh      = recMWh.toFixed(4);
+            oRow.migpMWh     = migpMWh.toFixed(4);
+            oRow.migpPercent = migpPct.toFixed(4);
+            oRow.recpercent  = recPct.toFixed(4);
+
+            // Use migpMWh for downstream header calculations
+            oRow._calcMWh = migpMWh;
+
+        } else if (fixedMWh > 0) {
+            // Fixed MWh product — use fixedMWh directly
+            oRow._calcMWh = fixedMWh;
+
+        } else {
+            // Flex product no REC — use estUsage
+            oRow._calcMWh = estUsage;
+        }
+    });
+
+    // ── STEP 9: Header aggregations ──────────────────────────────
+
+    // Annual Subscribed Load
+    // Schema field: annualSubs
+    // Formula: Sum of (termYears / totalTermYears) × calcMWh
+    var annualSubscribedLoad = 0;
+    if (totalTermYears > 0) {
+        aRows.forEach(function (oRow) {
+            annualSubscribedLoad +=
+                (oRow._termYears / totalTermYears) * oRow._calcMWh;
+        });
+    }
+    oSCDetail.setProperty("/annualSubs", annualSubscribedLoad.toFixed(4));
+    console.log("Annual Subscribed Load:", annualSubscribedLoad);
+
+    // Opportunity Subscribed Load
+    // Schema field: oppSubs
+    // Formula: Sum of (calcMWh × termYears)
+    var oppSubscribedLoad = 0;
+    aRows.forEach(function (oRow) {
+        oppSubscribedLoad += oRow._calcMWh * oRow._termYears;
+    });
+    oSCDetail.setProperty("/oppSubs", oppSubscribedLoad.toFixed(4));
+    console.log("Opportunity Subscribed Load:", oppSubscribedLoad);
+
+    // Contract Lifetime Value
+    // Schema field: contLifetimeval
+    // Formula: Sum of (subFee × calcMWh × termYears)
+    var contractLifetimeValue = 0;
+    aRows.forEach(function (oRow) {
+        var subFee = parseFloat(oRow.portfolioprice) || 0;
+        contractLifetimeValue += subFee * oRow._calcMWh * oRow._termYears;
+    });
+    oSCDetail.setProperty("/contLifetimeval", contractLifetimeValue.toFixed(2));
+    console.log("Contract Lifetime Value:", contractLifetimeValue);
+
+    // ── STEP 10: Metered / Unmetered rollup ───────────────────────
+    // Schema field on ConsumptionDetail: metered ("Yes"/"No")
+    // Header fields: meteredCon, unmeteredCon
+    var meteredTotal   = 0;
+    var unmeteredTotal = 0;
+    aCARows.forEach(function (oCA) {
+        var usage = parseFloat(oCA.est12month) || 0;
+        if (oCA.metered === "Yes") {
+            meteredTotal   += usage;
+        } else {
+            unmeteredTotal += usage;
+        }
+    });
+    oSCDetail.setProperty("/meteredCon",   meteredTotal.toFixed(4));
+    oSCDetail.setProperty("/unmeteredCon", unmeteredTotal.toFixed(4));
+    console.log("Metered:", meteredTotal, "| Unmetered:", unmeteredTotal);
+
+    // ── STEP 11: Write updated rows back to model ─────────────────
+    aRows.forEach(function (oRow) {
+        delete oRow._termYears;
+        delete oRow._calcMWh;
+    });
+    oTabModel.setProperty("/ProviderContracts", aRows);
+
+    // ── STEP 12: Success message ──────────────────────────────────
+    sap.m.MessageBox.success(
+        "Calculations complete:\n\n" +
+        "Gross Annual Usage:        " + grossAnnualUsage.toFixed(2)       + " MWh\n" +
+        "Size of Opportunity:       " + sizeOfOpp.toFixed(2)              + " MWh\n" +
+        "Term:                      " + totalTermYears.toFixed(2)          + " years\n" +
+        "Annual Subscribed Load:    " + annualSubscribedLoad.toFixed(2)   + " MWh\n" +
+        "Opp Subscribed Load:       " + oppSubscribedLoad.toFixed(2)      + " MWh\n" +
+        "Contract Lifetime Value:   $" + contractLifetimeValue.toFixed(2)
+    );
+},

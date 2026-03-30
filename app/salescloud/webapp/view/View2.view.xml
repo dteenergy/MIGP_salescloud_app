@@ -1,0 +1,362 @@
+<mvc:View controllerName="com.sap.salescloud.controller.View2"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:core="sap.ui.core"
+    xmlns:form="sap.ui.layout.form"
+    xmlns:smartForm="sap.ui.comp.smartform"
+    xmlns:smartField="sap.ui.comp.smartfield"
+    xmlns="sap.m" xmlns:x="sap.uxap" 
+    xmlns:mdc="sap.ui.mdc" 
+    xmlns:mdct="sap.ui.mdc.table"
+    xmlns:tnt="sap.tnt"
+    xmlns:p="sap.f">
+    <Page id="page9" title="{i18n>salescloud}" titleAlignment="Center">
+    <content >
+        <OverflowToolbar id="IDGenOverflowTobar01_CA7">
+                <Button id="_IDButtoncontractCA" type="Ghost" text="{i18n>viewconCA}" press="onOpp" visible="true" />
+                <ToolbarSpacer id="_IDGenToolbpacer071_CA" />
+                <Button id="_IDButtonPrpect9" type="Ghost" text="Save" icon="sap-icon://edit" press="onSaveContract" visible="true" />
+              </OverflowToolbar>
+        <form:SimpleForm id="idCustomerInfoRqForm_CC" editable="true" layout="ResponsiveGridLayout" singleContainerFullSize="false" 
+        columnsXL="2" columnsL="2" labelSpanXL="4" labelSpanL="4" labelSpanM="12" labelSpanS="12" >
+              <form:content>
+              
+                <core:Title id="_IDGenTite1_CC" text="Contract" icon="sap-icon://customer-order-entry"/>
+                <Label id="idlblppid" text="Contract ID" >
+                <layoutData>
+                  <l:GridData id="gd211" span="L5 M12 S12"/>
+                </layoutData></Label> 
+                <Input id="il89" value="12345" >
+                <layoutData>
+                  <l:GridData id="idGridD1ta_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblstaus" text="Status">
+                <layoutData>
+                  <l:GridData id="gd23" span="L5 M12 S12"/>
+                </layoutData></Label>
+                <ComboBox id="idstaus" selectionChange="onComboBoxtype">
+                    <core:Item id="idModelitem21" key="small" text="In progress" />
+                    <core:Item id="idModelm_C1S" key="large" text="Structuring"/>
+                    <core:Item id="idModelitem111" key="small" text="In approval" />
+                    <core:Item id="idModelm_CS11" key="large" text="Approved"/>
+                    <core:Item id="idModelitem121" key="small" text="Rejected" />
+                    <core:Item id="idModelm_CS21" key="large" text="Converted"/>
+                    <core:Item id="idModelm_CS241" key="large" text="Soft Close"/>
+                    <layoutData>
+                  <l:GridData id="idGridData1CC" span="XL5 L5 M12 S12" />
+                </layoutData>
+                </ComboBox>
+
+                <Label id="idlblsie" text="Size of Opportunity(MWh)" >
+                <layoutData>
+                  <l:GridData id="gd24" span="L5 M12 S12"/>
+                </layoutData></Label>
+                <Input id="idsie" value="{oSCDetail>/cust_name}" >
+                <layoutData>
+                  <l:GridData id="idGridDta2_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblsub" text="Annual Subscribed Load(MWh)" >
+                <layoutData>
+                  <l:GridData id="gd25" span="L5 M12 S12"/>
+                </layoutData></Label>
+                <Input id="idsub" value="{oSCDetail>/cust_name}" >
+                <layoutData>
+                  <l:GridData id="idGridDat3_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblcontrct" text="Contract Lifetime Value" >
+                <layoutData>
+                  <l:GridData id="gd26" span="L5 M12 S12"/>
+                </layoutData></Label>
+                <Input id="idcontrct" value="{oSCDetail>/cust_name}" >
+                <layoutData>
+                  <l:GridData id="idGridDat4_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblEmerConme_CC" text="Price  Structure">
+                <layoutData>
+                  <l:GridData id="gd27" span="L5 M12 S12"/>
+                </layoutData></Label>
+                <ComboBox id="idMoe_CS" selectionChange="onComboBoxtype">
+                    <core:Item id="iModelitm_CS1" key="small" text="REC Blend" />
+                    <core:Item id="idMoeliem_CS" key="large" text="MEC Blend"/>
+                    <layoutData>
+                  <l:GridData id="idGridDta_5CC" span="XL5 L5 M12 S12" />
+                </layoutData>
+                </ComboBox>        
+                
+                <Label id="idlblte" text="NTE">
+                <layoutData>
+                  <l:GridData id="gd28" span="L5 M12 S12"/>
+                </layoutData></Label>
+
+               <!-- <Label id="idlblmtrcon_cc" text="{i18n>mtrcon}"></Label> 
+                <Input id="idmtrcon_cc" value="{oSCDetail>/emer_phone}" >
+                <layoutData>
+                  <l:GridData id="idGridmtrcon_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input> -->
+
+                <Input id="idne" value="{oSCDetail>/emer_phone}" >
+                <layoutData>
+                  <l:GridData id="idGridDat6_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                
+
+                <core:Title id="_IDGenTile2_CC" />
+                
+                <Label id="idlbloppid1" text="Opportunity ID" /> 
+                <Input id="il821" value="12345" >
+                <layoutData>
+                  <l:GridData id="idGridD11ata1_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+                <Label id="idlblEmerConame_CC" text="Opportunity Category"/>
+                <ComboBox id="idModelCS" selectionChange="onComboBoxtype">
+                    <core:Item id="idModelitemCS1" key="small" text="Small Business" />
+                    <core:Item id="idModelitemCS" key="large" text="LCVP"/>
+                    <layoutData>
+                  <l:GridData id="idGridData7CC" span="XL5 L5 M12 S12" />
+                </layoutData>
+                </ComboBox>
+
+                <Label id="idltermcc" text="{i18n>term}" />
+                <Input id="idtermcc" value="{oSCDetail>/cust_name}">
+                <layoutData>
+                  <l:GridData id="idGidtermCC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlbluage" text="Gross Anual Usage(MWh)" />
+                <Input id="idusage0" value="{oSCDetail>/cust_name}">
+                <layoutData>
+                  <l:GridData id="idGidDaa_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblpusae" text="Percentage Usage(%)"/>
+                <Input id="idpusae" value="{oSCDetail>/emer_phone}" >
+                <layoutData>
+                  <l:GridData id="iGridDataCC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                
+                <Label id="idlbfee" text="Opportunity Subscribed Load"/>
+                <Input id="idfe" value="{oSCDetail>/emer_phone}" >
+                <layoutData>
+                  <l:GridData id="idGridat_CC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+
+                <Label id="idlblEmerCnNe_CC" text="Sales Type"/>
+                <ComboBox id="idMoe_S" selectionChange="onComboBoxtype">
+                    <core:Item id="idModitmCS1" key="small" text="New Sale" />
+                    <core:Item id="idMolitm_CS" key="large" text="Old Sale"/>
+                  <layoutData>
+                  <l:GridData id="idGridata_C" span="XL5 L5 M12 S12" />
+                </layoutData>
+                </ComboBox>
+
+                <Label id="idlblclosur" text="Annual MWh Size at Closure" />
+                <Input id="idclosur" value="{oSCDetail>/cust_name}" >
+                <layoutData>
+                  <l:GridData id="idGridDataCC" span="XL5 L5 M12 S12" />
+                </layoutData></Input>
+               
+              </form:content>
+            </form:SimpleForm >
+            <OverflowToolbar id="_IDGenOverflowToolbar0_CD">
+                <ToolbarSpacer id="_IDGenToolbarSpacer01CD" />
+                <Button id="IDverif" text="Fetch/Validate CA" press="onverify" type="Emphasized"/>
+                <Button id="IDcalculte" text="Calculate" press="oncalc" type="Emphasized"/> 
+                
+            </OverflowToolbar>
+
+        </content>
+            
+       
+    
+      <IconTabBar
+        id="idIconTabBarNoIcon"
+        expanded="{device>/isNoPhone}"
+        class="sapUiResponsiveContentPadding">
+        <items>
+          <IconTabFilter id="_IDGenIconTabFilte" text="Involved Parties" key="info" >
+              <mdc:Table id="table121" header="" p13nMode="Column,Sort,Group,Filter" type="ResponsiveTable" threshold="25" showRowCount="false" useColumnLabelsAsTooltips="true">
+                <mdct:Column id="_IDGenColun1" propertyKey="partner" header="Business Partner">
+                  <Text id="_IDGenTex1t1" text="{mountains>name}"/>
+                </mdct:Column>
+                <mdct:Column id="_IDGenClumn1" propertyKey="role" header="Role">
+                  <Text id="_IDGenText1" text="{mountains>range}"/>
+                </mdct:Column>
+              </mdc:Table>
+            
+          </IconTabFilter>
+
+          <IconTabSeparator id="_IDGenIconTabSeparator11" />
+
+          <IconTabFilter id="_IDGenIconTabFilter19" text="CA Consumption Details" key="attachments" >
+            <mdc:Table id="table19" header="" p13nMode="Column,Sort,Group,Filter" selectionMode="Multi" type="ResponsiveTable" threshold="25" showRowCount="false" useColumnLabelsAsTooltips="true">
+              <mdct:Column id="_IDGenColumn109" propertyKey="partner" header="Contract Account" visible="true">
+                <Text id="_IDGenText09" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn119" propertyKey="partner" header="Business Partner">
+                <Text id="_IDGenTex1t9" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn219" propertyKey="role" header="Validity">
+                <Text id="_IDGenText319" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn229" propertyKey="role" header="Replacement CA">
+                <Text id="_IDGenText3229" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn239" propertyKey="role" header="12 Month Est Usage">
+                <Text id="_IDGenText339" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn249" propertyKey="role" header="Metered">
+                <Text id="_IDGenText349" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn259" propertyKey="role" header="Unmetered">
+                <Text id="_IDGenText359" text="{mountains>range}"/>
+              </mdct:Column>
+            </mdc:Table>
+
+        
+          </IconTabFilter>
+
+          <IconTabSeparator id="_IDGenIconTabSeparator29" />
+          <IconTabFilter id="_IDGenIconTabFilter39" text="Provider Contract" key="notes">
+
+            <mdc:Table id="tablesmall9" header="" visible="false" p13nMode="Column,Sort,Group,Filter" type="ResponsiveTable" threshold="25" showRowCount="false" useColumnLabelsAsTooltips="true">
+              <mdct:Column id="_IDGenColumn290" propertyKey="partner" header="Product">
+                <Text id="_IDGenText209" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn019" propertyKey="partner" header="Portfolio">
+                <Text id="_IDGenTex2t9" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn01a9" propertyKey="partner" header="Fixed Price(USD)">
+                <Text id="_IDGenTex2ta9" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn2239" propertyKey="role" header="Portfolio Price(Subscription Fee)">
+                <Text id="_IDGenText2339" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn2249" propertyKey="role" header="Subscription %">
+                <Text id="_IDGenText2394" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn2219" propertyKey="role" header="Start Date" >
+                <Text id="_IDGenText9" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColqumn229" propertyKey="role" header="End Date">
+                <Text id="_IDGenText229" text="{mountains>range}"/>
+              </mdct:Column>
+              <!-- <mdct:Column id="_IDGenColumn29" propertyKey="role" header="REC Price">
+                <Text id="_IDGenText99" text="{mountains>range}"/>
+              </mdct:Column> -->
+              <mdct:Column id="_IDGenColumn009" propertyKey="partner" header="Est. Usage(MWh)">
+                <Text id="_IDGenTex209" text="{mountains>name}"/>
+              </mdct:Column>
+            </mdc:Table>
+
+          
+            <mdc:Table id="tablelarge9" header="" visible="false" p13nMode="Column,Sort,Group,Filter" type="ResponsiveTable" threshold="25" showRowCount="false" useColumnLabelsAsTooltips="true">
+              <mdct:Column id="_IDGenColumn2019" propertyKey="partner" header="Product">
+                <Text id="_IDGenText2q90" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn0119" propertyKey="partner" header="Portfolio">
+                <Text id="_IDGenTex2q9t" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColum39" propertyKey="role" header="Fixed Price(USD)">
+                <Text id="_IDGenTex39" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn22q39" propertyKey="role" header="Portfolio Price(Subscription Fee)">
+                <Text id="_IDGenText23q39" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn224q9" propertyKey="role" header="Subscription %">
+                <Text id="_IDGenText2q349" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn22119" propertyKey="role" header="Start Date" >
+                <Text id="_IDGenText23q19" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColqumn2229" propertyKey="role" header="End Date">
+                <Text id="_IDGenText2q29" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn001q9" propertyKey="partner" header="Est. Usage(MWh)">
+                <Text id="_IDGenTex20qt9" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn20219" propertyKey="role" header="REC Price">
+                <Text id="_IDGenText23019" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn20229" propertyKey="role" header="MIGP (%)">
+                <Text id="_IDGenText0229" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn20239" propertyKey="role" header="REC(%)">
+                <Text id="_IDGenText23039" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn20249" propertyKey="role" header="MIGP MWh">
+                <Text id="_IDGenText20349" text="{mountains>range}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn2259" propertyKey="role" header="REC MWh">
+                <Text id="_IDGenText2359" text="{mountains>range}"/>
+              </mdct:Column>
+            </mdc:Table>
+
+            <content>
+              <OverflowToolbar id="IDGenOverflowToolba9">
+                <ToolbarSpacer id="_IDGenToolbarSpacer0119" />
+                <Button id="_IDButtonprovider9" type="Ghost" text="Save" icon="sap-icon://edit" press="onSave" visible="true" />
+                <Button id="_IDButtonprovider19" type="Ghost" text="Enroll" icon="sap-icon://edit" press="onSave" visible="true" />
+              </OverflowToolbar>
+            </content>
+
+          </IconTabFilter>
+
+          <IconTabSeparator id="_IDGenIconTabSeparator39" />
+
+          <IconTabFilter id="_IDGenIconTabFilter49" text="Prospect" key="attachments">
+
+
+          
+            
+            <mdc:Table id="table119" header="" p13nMode="Column,Sort,Group,Filter" type="ResponsiveTable" threshold="25" showRowCount="false" useColumnLabelsAsTooltips="true">
+              <mdc:actions>
+              <OverflowToolbar id="IDGenOverflowToolbar01_CD19">
+                <ToolbarSpacer id="_IDGenToolbarSpacer01111_CD9" />
+                <Button id="idbtn_addnewRow_Fuses9"  type="Emphasized" icon="sap-icon://add" press="onAddnewProspectRow" visible="true"/>
+              </OverflowToolbar>
+              </mdc:actions>
+              <mdct:Column id="_IDGenColumn1109" propertyKey="partner" header="Dummy Business Partner(Address)">
+                <Text id="_IDGenText109" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn1119" propertyKey="partner" header="Dummy Contract Account">
+                <Text id="_IDGenTex11t9" text="{mountains>name}"/>
+              </mdct:Column>
+              <mdct:Column id="_IDGenColumn2119" propertyKey="role" header="Estimated Usage">
+                <Text id="_IDGenText3119" text="{mountains>range}"/>
+              </mdct:Column>
+
+              <!-- <items id="item1">
+                <ColumnListItem id="abc1">
+                  <cells>
+                    <Input id="inp1" value="12" />
+                    <Input id="inp2" value="sd" />
+                    <Input id="inp3" value="dfde" />
+                    
+                  </cells>
+                </ColumnListItem>
+              </items> -->
+              
+            </mdc:Table>
+
+            <content>
+              <OverflowToolbar id="IDGenOverflowToolbar01_CD9">
+                <ToolbarSpacer id="_IDGenToolbarSpacer0111_C9D" />
+                <Button id="_IDButtonProspect9" type="Ghost" text="Save" icon="sap-icon://edit" press="onSave" visible="true" />
+              </OverflowToolbar>
+            </content>
+
+          </IconTabFilter>
+          
+        </items>
+      </IconTabBar>
+        
+    </Page>
+</mvc:View>

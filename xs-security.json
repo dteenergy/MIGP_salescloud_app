@@ -1,0 +1,31 @@
+{
+  "xsappname": "salescloud",
+  "tenant-mode": "dedicated",
+  "description": "Security profile of called application",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.MIGP_Admin",
+      "description": "Admin Role for MIGP SalesCloud Application"
+    },
+    {
+      "name": "$XSAPPNAME.MIGP_User",
+      "description": "User Role for MIGP SalesCloud Application"
+    }
+  ],
+  "role-templates": [
+    {
+      "name": "rl_MIGP_Admin",
+      "description": "Admin Role",
+      "scope-references": [
+        "$XSAPPNAME.MIGP_Admin"
+      ]
+    },
+    {
+      "name": "rl_MIGP_User",
+      "description": "User Role",
+      "scope-references": [
+        "$XSAPPNAME.MIGP_User"
+      ]
+    }
+  ]
+}
