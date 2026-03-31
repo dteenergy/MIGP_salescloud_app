@@ -13,7 +13,8 @@ sap.ui.define([
         // onInit
         // ─────────────────────────────────────────────────────────────────────
         onInit: function () {
-
+            //UserRole
+            this.getUserDetails();
             var oSCDetail = new JSONModel({
                 Oppid: '',
                 quoteId: '',        // ✅ renamed from contractid
@@ -90,6 +91,51 @@ sap.ui.define([
                     });
                 }.bind(this));
             }
+        },
+
+        //UserRoles
+        getUserDetails: async function () {
+            let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
+                oUserScopeJModel.setData("");
+
+                let omodel = this.getOwnerComponent().getModel();
+                let oOperation = omodel.bindContext("/userDetails(...)");
+                try{
+                    await oOperation.execute().then(function (res) {
+                        let oResults = oOperation.getBoundContext().getObject();
+                                           
+                        if (oResults) {
+                            oUserScopeJModel.setData(oResults);
+                            if (oUserScopeJModel.oData.value=='MIGP_Admin') {
+                                this.getView().byId("idcommLetterSent").setEnabled(true);
+                                this.getView().byId("idcommLetterSigned").setEnabled(true);
+                                this.getView().byId("idbtnExport").setVisible(true);
+                            }
+                            else if (oUserScopeJModel.oData.value=='MIGP_User'){
+                                this.getView().byId("idcommLetterSent").setEnabled(false);
+                                this.getView().byId("idcommLetterSigned").setEnabled(false);
+                                this.getView().byId("idbtnExport").setVisible(false);
+                            }
+                        } else {
+                            
+                        }
+                    }.bind(this), function (err) {
+                       let message = err.message + "\n Roles not found! Contact support admin!";
+                        sap.m.MessageBox.error(err.message);
+                        console.error(err.message);
+
+                    }.bind(this))
+                }
+            catch (oError){
+                console.error(oError);
+            }
+            
+        },
+        onBeforeRendering: function () {
+            let oUserScopeJModelData = this.getOwnerComponent().getModel("oUserScopeJModel").getData();
+            console.log(oUserScopeJModelData);
+
+            
         },
 
         // ── Sales Phase definitions per BPD ──────────────────────────────────
@@ -414,14 +460,35 @@ sap.ui.define([
             var oOppInput = this.getView().byId("il8");
             if (oOppInput) { oOppInput.setValue(oParsed.Oppid || ''); }
 
-            // ── Status ───────────────────────────────────────────────────────
+            // // ── Status ───────────────────────────────────────────────────────
+            // var aValidStatuses = [
+            //     "Open", "In Progress", "Won", "Lost", "Closed", "Structuring", "In Approval",
+            //     "Approved", "Rejected", "Contract Sign-Off"
+            // ];
+            // var sRawStatus = (oParsed.status || '').trim();
+            // var sMatchedStatus = aValidStatuses.find(function (k) {
+            //     return k.toLowerCase() === sRawStatus.toLowerCase();
+            // }) || '';
+            // ── Status ───────────────────────────────────────────────────────────
+            var oStatusCodeMap = {
+                'Z0': 'Open',
+                'Z1': 'In Progress',
+                'Z2': 'Won',
+                'Z3': 'Lost',
+                'Z4': 'Closed',
+                'Z5': 'Structuring'
+            };
             var aValidStatuses = [
                 "Open", "In Progress", "Won", "Lost", "Closed", "Structuring", "In Approval",
                 "Approved", "Rejected", "Contract Sign-Off"
             ];
             var sRawStatus = (oParsed.status || '').trim();
+
+            // Resolve Z-code first, then fall through to text match
+            var sResolvedStatus = oStatusCodeMap[sRawStatus] || sRawStatus;
+
             var sMatchedStatus = aValidStatuses.find(function (k) {
-                return k.toLowerCase() === sRawStatus.toLowerCase();
+                return k.toLowerCase() === sResolvedStatus.toLowerCase();
             }) || '';
 
             if (sRawStatus && !sMatchedStatus) {
@@ -630,6 +697,17 @@ sap.ui.define([
         // onFetchOpp — triggered by Enter key (submit) or suggestion select
         // ─────────────────────────────────────────────────────────────────────
         onFetchOpp: async function () {
+            let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
+            if (oUserScopeJModel.oData.value=='MIGP_Admin') {
+                this.getView().byId("idcommLetterSent").setEnabled(true);
+                this.getView().byId("idcommLetterSigned").setEnabled(true);
+                this.getView().byId("idbtnExport").setVisible(true);
+            }
+            else if (oUserScopeJModel.oData.value=='MIGP_User'){
+                this.getView().byId("idcommLetterSent").setEnabled(false);
+                this.getView().byId("idcommLetterSigned").setEnabled(false);
+                this.getView().byId("idbtnExport").setVisible(false);
+            }
             var sOppId = this.getView().byId("il8").getValue().trim();
             if (!sOppId) { MessageBox.error("Please enter an Opportunity ID."); return; }
             var oModel = this.getOwnerComponent().getModel();

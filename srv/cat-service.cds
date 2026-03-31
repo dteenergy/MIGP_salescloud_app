@@ -97,6 +97,7 @@ service CloudService {
   entity OpportunityIds    as select distinct key Oppid from db.Opportunity;
 
   // Functions & Actions
+  function userDetails()                                                       returns String;
   function getOpportunityRecord(connection_object: String)                     returns String;
   action   saveOpportunity(opp: OpportunityInput)                              returns String;
   action   saveFullOpportunity(bundle: String)                                 returns String;
