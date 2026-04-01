@@ -14,7 +14,7 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         onInit: function () {
             //UserRole
-            this.getUserDetails();
+            // this.getUserDetails();
             var oSCDetail = new JSONModel({
                 Oppid: '',
                 quoteId: '',        // ✅ renamed from contractid
@@ -103,15 +103,15 @@ sap.ui.define([
                 try{
                     await oOperation.execute().then(function (res) {
                         let oResults = oOperation.getBoundContext().getObject();
-                                           
+                                 
                         if (oResults) {
                             oUserScopeJModel.setData(oResults);
-                            if (oUserScopeJModel.oData.value=='MIGP_Admin') {
+                            if (oUserScopeJModel.oData.hasAdminAccess) {
                                 this.getView().byId("idcommLetterSent").setEnabled(true);
                                 this.getView().byId("idcommLetterSigned").setEnabled(true);
                                 this.getView().byId("idbtnExport").setVisible(true);
                             }
-                            else if (oUserScopeJModel.oData.value=='MIGP_User'){
+                            else if (oUserScopeJModel.oData.hasUserAccess){
                                 this.getView().byId("idcommLetterSent").setEnabled(false);
                                 this.getView().byId("idcommLetterSigned").setEnabled(false);
                                 this.getView().byId("idbtnExport").setVisible(false);
@@ -125,16 +125,11 @@ sap.ui.define([
                         console.error(err.message);
 
                     }.bind(this))
+
                 }
             catch (oError){
                 console.error(oError);
             }
-            
-        },
-        onBeforeRendering: function () {
-            let oUserScopeJModelData = this.getOwnerComponent().getModel("oUserScopeJModel").getData();
-            console.log(oUserScopeJModelData);
-
             
         },
 
@@ -165,63 +160,70 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         // _onRouteMatched
         // ─────────────────────────────────────────────────────────────────────
-        _onRouteMatched: function () {
-            this._loadOppIdSuggestions();
-            try {
-                var oSearchParams = new URLSearchParams(window.location.search);
-                var sUrlOppId = oSearchParams.get("OpportunityID");
-                var sUrlQuoteId = oSearchParams.get("QuoteID");
+        _onRouteMatched: async function (oEvent) {
+            const roles = await this.getUserDetails();
+            let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel").getData();;
+            if (oUserScopeJModel.hasUserAccess || oUserScopeJModel.hasAdminAccess) {
+                this._loadOppIdSuggestions();
+                try {
+                    var oSearchParams = new URLSearchParams(window.location.search);
+                    var sUrlOppId = oSearchParams.get("OpportunityID");
+                    var sUrlQuoteId = oSearchParams.get("QuoteID");
 
-                // ── Store BusinessPartnerID from URL ──────────────────────
-                var sBPId = oSearchParams.get("BusinessPartnerID");
-                if (sBPId && sBPId.trim()) {
-                    var oSCDetail = this.getView().getModel("oSCDetail");
-                    oSCDetail.setProperty("/businessPartnerId", sBPId.trim());
-                    console.log("BusinessPartnerID from URL:", sBPId.trim());
-                }
+                    // ── Store BusinessPartnerID from URL ──────────────────────
+                    var sBPId = oSearchParams.get("BusinessPartnerID");
+                    if (sBPId && sBPId.trim()) {
+                        var oSCDetail = this.getView().getModel("oSCDetail");
+                        oSCDetail.setProperty("/businessPartnerId", sBPId.trim());
+                        console.log("BusinessPartnerID from URL:", sBPId.trim());
+                    }
 
-                // ── Fallback: check hash fragment ─────────────────────────
-                if (!sUrlOppId) {
-                    var sHash = window.location.hash || "";
-                    var oMatch = sHash.match(/[?&]OpportunityID=([^&]+)/i);
-                    if (oMatch) { sUrlOppId = decodeURIComponent(oMatch[1]); }
-                }
-                if (!sUrlQuoteId) {
-                    var sHashQ = window.location.hash || "";
-                    var oMatchQ = sHashQ.match(/[?&]QuoteID=([^&]+)/i);
-                    if (oMatchQ) { sUrlQuoteId = decodeURIComponent(oMatchQ[1]); }
-                }
+                    // ── Fallback: check hash fragment ─────────────────────────
+                    if (!sUrlOppId) {
+                        var sHash = window.location.hash || "";
+                        var oMatch = sHash.match(/[?&]OpportunityID=([^&]+)/i);
+                        if (oMatch) { sUrlOppId = decodeURIComponent(oMatch[1]); }
+                    }
+                    if (!sUrlQuoteId) {
+                        var sHashQ = window.location.hash || "";
+                        var oMatchQ = sHashQ.match(/[?&]QuoteID=([^&]+)/i);
+                        if (oMatchQ) { sUrlQuoteId = decodeURIComponent(oMatchQ[1]); }
+                    }
 
-                // ── Case 1: OpportunityID only → load Opportunity ─────────
-                if (sUrlOppId && sUrlOppId.trim() && (!sUrlQuoteId || !sUrlQuoteId.trim())) {
-                    console.log("Case 1 — Opportunity:", sUrlOppId.trim());
-                    var oInput = this.getView().byId("il8");
-                    if (oInput) { oInput.setValue(sUrlOppId.trim()); }
-                    this.onFetchOpp();
-                    return;
-                }
+                    // ── Case 1: OpportunityID only → load Opportunity ─────────
+                    if (sUrlOppId && sUrlOppId.trim() && (!sUrlQuoteId || !sUrlQuoteId.trim())) {
+                        console.log("Case 1 — Opportunity:", sUrlOppId.trim());
+                        var oInput = this.getView().byId("il8");
+                        if (oInput) { oInput.setValue(sUrlOppId.trim()); }
+                        this.onFetchOpp();
+                        return;
+                    }
 
-                // ── Case 2: Both IDs → load/replicate Quote ───────────────
-                if (sUrlOppId && sUrlOppId.trim() && sUrlQuoteId && sUrlQuoteId.trim()) {
-                    console.log("Case 2 — Quote (both IDs):", sUrlOppId.trim(), sUrlQuoteId.trim());
-                    var oInputC2 = this.getView().byId("il8");
-                    if (oInputC2) { oInputC2.setValue(sUrlOppId.trim()); }
-                    this._loadOrReplicateQuote(sUrlOppId.trim(), sUrlQuoteId.trim());
-                    return;
-                }
+                    // ── Case 2: Both IDs → load/replicate Quote ───────────────
+                    if (sUrlOppId && sUrlOppId.trim() && sUrlQuoteId && sUrlQuoteId.trim()) {
+                        console.log("Case 2 — Quote (both IDs):", sUrlOppId.trim(), sUrlQuoteId.trim());
+                        var oInputC2 = this.getView().byId("il8");
+                        if (oInputC2) { oInputC2.setValue(sUrlOppId.trim()); }
+                        this._loadOrReplicateQuote(sUrlOppId.trim(), sUrlQuoteId.trim());
+                        return;
+                    }
 
-                // ── Case 3: QuoteID only → fetch Quote from DB ────────────
-                if (sUrlQuoteId && sUrlQuoteId.trim() && (!sUrlOppId || !sUrlOppId.trim())) {
-                    console.log("Case 3 — Quote (QuoteID only):", sUrlQuoteId.trim());
-                    this._loadQuoteByQuoteId(sUrlQuoteId.trim());
-                    return;
-                }
+                    // ── Case 3: QuoteID only → fetch Quote from DB ────────────
+                    if (sUrlQuoteId && sUrlQuoteId.trim() && (!sUrlOppId || !sUrlOppId.trim())) {
+                        console.log("Case 3 — Quote (QuoteID only):", sUrlQuoteId.trim());
+                        this._loadQuoteByQuoteId(sUrlQuoteId.trim());
+                        return;
+                    }
 
-            } catch (e) { console.error("Error parsing URL parameters", e); }
+                } catch (e) { console.error("Error parsing URL parameters", e); }
 
-            // ── No URL params — fall back to latest CPI record ────────────
-            var sCurrentVal = this.getView().byId("il8").getValue();
-            if (!sCurrentVal) { this._loadLatestCPIRecord(); }
+                // ── No URL params — fall back to latest CPI record ────────────
+                var sCurrentVal = this.getView().byId("il8").getValue();
+                if (!sCurrentVal) { this._loadLatestCPIRecord(); }
+            }
+            else {
+                MessageBox.error("No role assigned to your account. Please contact administrator."); return false;
+            }
         },
 
 
@@ -697,17 +699,7 @@ sap.ui.define([
         // onFetchOpp — triggered by Enter key (submit) or suggestion select
         // ─────────────────────────────────────────────────────────────────────
         onFetchOpp: async function () {
-            let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
-            if (oUserScopeJModel.oData.value=='MIGP_Admin') {
-                this.getView().byId("idcommLetterSent").setEnabled(true);
-                this.getView().byId("idcommLetterSigned").setEnabled(true);
-                this.getView().byId("idbtnExport").setVisible(true);
-            }
-            else if (oUserScopeJModel.oData.value=='MIGP_User'){
-                this.getView().byId("idcommLetterSent").setEnabled(false);
-                this.getView().byId("idcommLetterSigned").setEnabled(false);
-                this.getView().byId("idbtnExport").setVisible(false);
-            }
+            
             var sOppId = this.getView().byId("il8").getValue().trim();
             if (!sOppId) { MessageBox.error("Please enter an Opportunity ID."); return; }
             var oModel = this.getOwnerComponent().getModel();
@@ -737,6 +729,7 @@ sap.ui.define([
                 console.error("getOpportunityRecord failed:", err.message);
                 MessageBox.error("Failed to fetch opportunity: " + err.message);
             }
+            
         },
 
         onSpecialsExist: function (bExists) { console.log("onSpecialsExist:", bExists); },

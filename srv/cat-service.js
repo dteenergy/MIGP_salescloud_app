@@ -34,7 +34,33 @@ module.exports = (srv) => {
     srv.on('userDetails', async (req) => {
       const roles = Object.keys(req.user.roles || {});
       console.log(roles);
-      return roles;
+      let userName = req.user.tokenInfo.getPayload().user_name, //U id if DTE SSO otherwise email
+        email = req.user.tokenInfo.getPayload().email,
+        hasUserAccess = false,
+        hasAdminAccess = false;
+
+      for (var i = 0; i < roles.length; i++) {
+        let scope = roles[i];
+        switch (scope) {
+          case "MIGP_User":
+            hasUserAccess = true;
+            break;
+          case "MIGP_Admin":
+            hasAdminAccess = true;
+            break;
+          default:
+            // code block
+        }
+      }
+      let userInfo = {
+        "userName": userName,
+        "email": email,
+        "hasUserAccess": hasUserAccess,
+        "hasAdminAccess": hasAdminAccess
+      };
+      console.log(userInfo);
+      return userInfo;
+
     });
 
 

@@ -49,7 +49,7 @@
                 suggest="onOppIdSuggest"
                 suggestionItemSelected="onOppIdSuggestionSelected"
                 submit="onFetchOpp"
-                tooltip="Type to search, then press Enter to load" editable="false">
+                tooltip="Type to search" editable="false">
               <layoutData><l:GridData id="_IDGenGridData1" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
