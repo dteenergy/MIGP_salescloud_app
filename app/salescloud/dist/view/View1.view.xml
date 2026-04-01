@@ -49,7 +49,7 @@
                 suggest="onOppIdSuggest"
                 suggestionItemSelected="onOppIdSuggestionSelected"
                 submit="onFetchOpp"
-                tooltip="Type to search, then press Enter to load" editable="true">
+                tooltip="Type to search, then press Enter to load" editable="false">
               <layoutData><l:GridData id="_IDGenGridData1" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
@@ -185,7 +185,7 @@
 
             <!-- Row 1 R: Opportunity Category -->
             <Label id="idlblEmerConName_CC" text="{i18n>oppcat}"/>
-            <ComboBox id="idModel_CS" selectionChange="onComboBoxtype" editable="true">
+            <ComboBox id="idModel_CS" selectionChange="onComboBoxtype"  editable="false"  enabled="false" class="noGreyCombo">
                 <core:Item id="_IDGenItem9" key="MIGP - Small Business" text="MIGP - Small Business"/>
                 <core:Item id="_IDGenItem10" key="MIGP - LCVP"                  text="MIGP - LCVP"/>
                 <layoutData><l:GridData id="_IDGenGridData11" span="XL7 L7 M12 S12"/></layoutData>
@@ -493,8 +493,8 @@
     <core:Item id="_IDGenItem35" key="95"  text="95"/>
     <core:Item id="_IDGenItem56" key="100" text="100"/>
 </Select>
-                  <Input id="_IDGenInput5" value="{oOpportunityjmodel>startDate}" editable="true" />
-                  <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <Input id="_IDGenInput5" value="{oOpportunityjmodel>startDate}" editable="false" />
+                  <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="false" />
                   <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/>
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
                   <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/>
@@ -565,8 +565,8 @@
     <core:Item id="_IDGenItem55" key="95"  text="95"/>
     <core:Item id="_IDGenItem57" key="100" text="100"/>
 </Select>
-                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="true" />
-                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="false" />
+                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="false" />
                   <Input id="_IDGenInput16" value="{oOpportunityjmodel>estUsage}"    editable="false"/>
                   <Input id="_IDGenInput17" value="{oOpportunityjmodel>recPrice}"/>
                   <Input id="_IDGenInput18" value="{oOpportunityjmodel>migpPercent}" editable="false"/>

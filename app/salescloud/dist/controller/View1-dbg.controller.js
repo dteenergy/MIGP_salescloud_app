@@ -1618,7 +1618,7 @@ sap.ui.define([
             // ── MASTER SWITCH ────────────────────────────────────────────────
             // Set to true  → always use mock data (CPI not ready)
             // Set to false → use live CPI call    (CPI ready)
-            var bUseMock = false; // ← switch to false only when CPI has real CA data for your test BP
+            var bUseMock = true; // ← switch to false only when CPI has real CA data for your test BP
             // ────────────────────────────────────────────────────────────────
 
             oView.setBusy(true);
