@@ -34,8 +34,8 @@ module.exports = (srv) => {
     srv.on('userDetails', async (req) => {
       const roles = Object.keys(req.user.roles || {});
       console.log(roles);
-      let userName = req.user.tokenInfo.getPayload().user_name, //U id if DTE SSO otherwise email
-        email = req.user.tokenInfo.getPayload().email,
+      let userName = req.user.authInfo.token.getPayload().user_name, //U id if DTE SSO otherwise email
+        email = req.user.authInfo.token.getPayload().email,
         hasUserAccess = false,
         hasAdminAccess = false;
 
@@ -237,8 +237,11 @@ module.exports = (srv) => {
           enrollmentEmailId: opp.enrollmentEmailId || '',             // ← add
           // lastFetchedAt: opp.lastFetchedAt || '',                   // ← timestamp
           // Only persist if it's a valid ISO timestamp — ignore display-formatted strings
-          lastFetchedAt: header.lastFetchedAt && header.lastFetchedAt.includes('T')
-            ? header.lastFetchedAt
+          // lastFetchedAt: header.lastFetchedAt && header.lastFetchedAt.includes('T')
+          //   ? header.lastFetchedAt
+          //   : undefined,
+          lastFetchedAt: opp.lastFetchedAt && opp.lastFetchedAt.includes('T')
+            ? opp.lastFetchedAt
             : undefined,
         };
 
@@ -346,12 +349,14 @@ module.exports = (srv) => {
 
         // 3) Insert new children
         const ipRows = (involvedParties || []).map(r => ({
+          ID: cds.utils.uuid(),
           buspartner: asStr(r.buspartner),
           role: asStr(r.role),
           opportunity_ID: oppID
         }));
 
         const pcRows = (providerContracts || []).map(r => ({
+          ID: cds.utils.uuid(),
           product: asStr(r.product),
           portfolio: asStr(r.portfolio),
           fixedMWh: asStr(r.fixedMWh),
@@ -373,6 +378,7 @@ module.exports = (srv) => {
         }));
 
         const cdRows = (consumptionDetails || []).map(r => ({
+          ID: cds.utils.uuid(),
           contacc: asStr(r.contacc),
           buspartner: asStr(r.buspartner),
           validity: asStr(r.validity),
@@ -394,6 +400,7 @@ module.exports = (srv) => {
         }));
 
         const prRows = (prospects || []).map(r => ({
+          ID: cds.utils.uuid(),
           siteAddLoc: asStr(r.siteAddLoc),
           projectedCon: asStr(r.projectedCon),
           year: asStr(r.year),
@@ -407,7 +414,7 @@ module.exports = (srv) => {
         if (prRows.length) await tx.run(INSERT.into(Prospect).entries(prRows));
 
         console.log(`saveFullOpportunity committed: IP=${ipRows.length} PC=${pcRows.length} CD=${cdRows.length} PR=${prRows.length}`);
-
+        console.log('lastFetchedAt being saved:', oppCols.lastFetchedAt);
         await tx.commit();
         return JSON.stringify({ value: 'ok' });
 
@@ -775,7 +782,10 @@ module.exports = (srv) => {
           commencementLetterSigned: opp.commencementLetterSigned || '',
           enrolled: opp.enrolled || '',
           includeInPipeline: opp.includeInPipeline || '',
-          salesPhase: opp.salesPhase || ''
+          salesPhase: opp.salesPhase || '',
+          enrollmentReferralCode: opp.enrollmentReferralCode || '',  // FIX: was missing
+          enrollmentEmailId: opp.enrollmentEmailId || '',            // FIX: was missing
+          lastFetchedAt: opp.lastFetchedAt || null                   // FIX: was missing
         }));
 
         // Step 4: Copy all 4 child tables
@@ -786,6 +796,10 @@ module.exports = (srv) => {
           copy.ID = cds.utils.uuid();        // ← ALWAYS assign a fresh UUID
           copy.opportunity_ID = newQuoteID;
           copy.opportunity_ID = newQuoteID;
+          delete copy.createdAt;
+          delete copy.modifiedAt;
+          delete copy.createdBy;
+          delete copy.modifiedBy;
           return copy;
         });
 
@@ -899,12 +913,24 @@ module.exports = (srv) => {
         }
 
         // ── Step 2: Check if Quote already has child data ─────────────────
-        const existingPC = await db.run(
-          SELECT.from(ProviderContract)
-            .where({ opportunity_ID: quoteShell.ID })
-        );
+        // const existingPC = await db.run(
+        //   SELECT.from(ProviderContract)
+        //     .where({ opportunity_ID: quoteShell.ID })
+        // );
+        // ── Step 2: Check if Quote already has ANY child data ─────────────
+        // FIX: old code only checked ProviderContract — if OPP has no PC rows
+        // this was always 0, causing repeated overwrites of quote data.
+        // Now check all four tables; if any has rows the quote is populated.
+        const [existingIP, existingPC, existingCD, existingPR] = await Promise.all([
+          db.run(SELECT.from(InvolvedParties).where({ opportunity_ID: quoteShell.ID })),
+          db.run(SELECT.from(ProviderContract).where({ opportunity_ID: quoteShell.ID })),
+          db.run(SELECT.from(ConsumptionDetail).where({ opportunity_ID: quoteShell.ID })),
+          db.run(SELECT.from(Prospect).where({ opportunity_ID: quoteShell.ID }))
+        ]);
 
-        if (existingPC.length > 0) {
+        if (existingIP.length > 0 || existingPC.length > 0 || existingCD.length > 0 || existingPR.length > 0) {
+
+        // if (existingPC.length > 0) {
           // Quote already populated — load directly
           console.log('Quote already has data, loading:', quoteId);
           // ── ADD THIS BLOCK HERE ───────────────────────────────────────────
@@ -1067,6 +1093,7 @@ module.exports = (srv) => {
             salesType: opp.salesType || '',
             priceStructure: opp.priceStructure || '',
             nte: opp.nte || '',
+            annualMWh: opp.annualMWh || '',   // FIX: was missing
             term: opp.term || '',
             meteredCon: opp.meteredCon || '',
             unmeteredCon: opp.unmeteredCon || '',
@@ -1088,6 +1115,10 @@ module.exports = (srv) => {
           copy.ID = cds.utils.uuid();        // ← ALWAYS assign a fresh UUID
           copy.opportunity_ID = quoteShell.ID;
           copy.opportunity_ID = quoteShell.ID;
+          delete copy.createdAt;
+          delete copy.modifiedAt;
+          delete copy.createdBy;
+          delete copy.modifiedBy;
           return copy;
         });
 
@@ -1814,22 +1845,110 @@ module.exports = (srv) => {
             //   }
             // }
              // ── Full replace IP rows for QUOTE (C4C is source of truth) ─────
+            // await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: existingQuote.ID }));
+            // if (Array.isArray(involvedParties) && involvedParties.length > 0) {
+            //   const ipRows = involvedParties.map(x => ({
+            //     ID: cds.utils.uuid(),
+            //     buspartner: x?.buspartner ?? null,
+            //     role: x?.role ?? null,
+            //     opportunity_ID: existingQuote.ID
+            //   }));
+            //   await insertInBatches(InvolvedParties, ipRows);
+            //   console.log(`Replaced ${ipRows.length} IP rows for Quote:`, opp.quoteId);
+            // }
+
+            // // ── Full replace PC rows for QUOTE (C4C is source of truth) ─────
+            // await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
+            // if (Array.isArray(providerContracts) && providerContracts.length > 0) {
+            //   const pcRows = providerContracts.map(x => ({
+            //     ID: cds.utils.uuid(),
+            //     product: x?.product ?? null,
+            //     portfolio: x?.portfolio ?? null,
+            //     fixedMWh: x?.fixedMWh ?? null,
+            //     fixedPrice: x?.fixedPrice ?? null,
+            //     portfolioprice: x?.portfolioprice ?? null,
+            //     subspercent: x?.subspercent ?? null,
+            //     startDate: x?.startDate ?? null,
+            //     endDate: x?.endDate ?? null,
+            //     enrollChk: x?.enrollChk ?? null,
+            //     exportDate: x?.exportDate ?? null,
+            //     exportChk: x?.exportChk ?? null,
+            //     opportunity_ID: existingQuote.ID
+            //   }));
+            //   await insertInBatches(ProviderContract, pcRows);
+            //   console.log(`Replaced ${pcRows.length} PC rows for Quote:`, opp.quoteId);
+            // }
+
+            // ── Replicate OPP children into QUOTE, then append payload rows ──
+            // Step A: Load parent OPP
+            const parentOpp = await tx.run(
+              SELECT.one.from(Opportunity).columns('ID')
+                .where({ Oppid: existingQuote.Oppid, objectStatus: 'OPP' })
+            );
+
+            // Step B: Wipe existing quote children — full replace
             await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: existingQuote.ID }));
-            if (Array.isArray(involvedParties) && involvedParties.length > 0) {
-              const ipRows = involvedParties.map(x => ({
+            await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
+
+            // Step C: Copy ALL IP rows from OPP into quote
+            let baseIPRows = [];
+            if (parentOpp) {
+              const oppIP = await tx.run(
+                SELECT.from(InvolvedParties).where({ opportunity_ID: parentOpp.ID })
+              );
+              baseIPRows = oppIP.map(r => ({
+                ID: cds.utils.uuid(),
+                buspartner: r.buspartner ?? null,
+                role: r.role ?? null,
+                opportunity_ID: existingQuote.ID
+              }));
+            }
+
+            // Step D: Append NEW IP rows from payload (skip duplicates already in OPP)
+            const existingIPKeys = baseIPRows.map(r => `${r.buspartner}|${r.role}`);
+            const newIPRows = (involvedParties || [])
+              .filter(x => !existingIPKeys.includes(`${x?.buspartner}|${x?.role}`))
+              .map(x => ({
                 ID: cds.utils.uuid(),
                 buspartner: x?.buspartner ?? null,
                 role: x?.role ?? null,
                 opportunity_ID: existingQuote.ID
               }));
-              await insertInBatches(InvolvedParties, ipRows);
-              console.log(`Replaced ${ipRows.length} IP rows for Quote:`, opp.quoteId);
+
+            const allIPRows = [...baseIPRows, ...newIPRows];
+            if (allIPRows.length > 0) {
+              await insertInBatches(InvolvedParties, allIPRows);
+              console.log(`Quote IP: ${baseIPRows.length} from OPP + ${newIPRows.length} new from payload = ${allIPRows.length} total`);
             }
 
-            // ── Full replace PC rows for QUOTE (C4C is source of truth) ─────
-            await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
-            if (Array.isArray(providerContracts) && providerContracts.length > 0) {
-              const pcRows = providerContracts.map(x => ({
+            // Step E: Copy ALL PC rows from OPP into quote
+            let basePCRows = [];
+            if (parentOpp) {
+              const oppPC = await tx.run(
+                SELECT.from(ProviderContract).where({ opportunity_ID: parentOpp.ID })
+              );
+              basePCRows = oppPC.map(r => ({
+                ID: cds.utils.uuid(),
+                product: r.product ?? null,
+                portfolio: r.portfolio ?? null,
+                fixedMWh: r.fixedMWh ?? null,
+                fixedPrice: r.fixedPrice ?? null,
+                portfolioprice: r.portfolioprice ?? null,
+                subspercent: r.subspercent ?? null,
+                startDate: r.startDate ?? null,
+                endDate: r.endDate ?? null,
+                enrollChk: r.enrollChk ?? null,
+                exportDate: r.exportDate ?? null,
+                exportChk: r.exportChk ?? null,
+                opportunity_ID: existingQuote.ID
+              }));
+            }
+
+            // Step F: Append NEW PC rows from payload (skip duplicates already in OPP)
+            const existingPCKeys = basePCRows.map(r => `${r.product}|${r.portfolio}`);
+            const newPCRows = (providerContracts || [])
+              .filter(x => !existingPCKeys.includes(`${x?.product}|${x?.portfolio}`))
+              .map(x => ({
                 ID: cds.utils.uuid(),
                 product: x?.product ?? null,
                 portfolio: x?.portfolio ?? null,
@@ -1844,27 +1963,131 @@ module.exports = (srv) => {
                 exportChk: x?.exportChk ?? null,
                 opportunity_ID: existingQuote.ID
               }));
-              await insertInBatches(ProviderContract, pcRows);
-              console.log(`Replaced ${pcRows.length} PC rows for Quote:`, opp.quoteId);
+
+            const allPCRows = [...basePCRows, ...newPCRows];
+            if (allPCRows.length > 0) {
+              await insertInBatches(ProviderContract, allPCRows);
+              console.log(`Quote PC: ${basePCRows.length} from OPP + ${newPCRows.length} new from payload = ${allPCRows.length} total`);
             }
           }
 
+          // else {
+          //   // First time — create Quote shell row
+          //   const newQuoteID = cds.utils.uuid();
+          //   await tx.run(INSERT.into(Opportunity).entries({
+          //     ID: newQuoteID,
+          //     Oppid: opp.Oppid,        // ← 456 (parent OppID, used for copy)
+          //     objectStatus: 'QUOTE',
+          //     quoteId: opp.quoteId,      // ← 123 (C4C Quote ID)
+          //     status: opp.status ?? null,
+          //     oppCategory: opp.oppCategory ?? null,
+          //     salesPhase: opp.salesPhase ?? null
+          //     // No children here — copied from OPP when user opens iFrame
+          //   }));
+          //   inserted++;
+          //   console.log('Quote shell created: QuoteID=', opp.quoteId,
+          //     'linked to OppID=', opp.Oppid);
+          // }
           else {
             // First time — create Quote shell row
             const newQuoteID = cds.utils.uuid();
             await tx.run(INSERT.into(Opportunity).entries({
               ID: newQuoteID,
-              Oppid: opp.Oppid,        // ← 456 (parent OppID, used for copy)
+              Oppid: opp.Oppid,
               objectStatus: 'QUOTE',
-              quoteId: opp.quoteId,      // ← 123 (C4C Quote ID)
+              quoteId: opp.quoteId,
               status: opp.status ?? null,
               oppCategory: opp.oppCategory ?? null,
               salesPhase: opp.salesPhase ?? null
-              // No children here — copied from OPP when user opens iFrame
             }));
             inserted++;
-            console.log('Quote shell created: QuoteID=', opp.quoteId,
-              'linked to OppID=', opp.Oppid);
+            console.log('Quote shell created: QuoteID=', opp.quoteId, 'linked to OppID=', opp.Oppid);
+
+            // ── Immediately copy OPP children + append payload rows ───────────
+            const parentOppNew = await tx.run(
+              SELECT.one.from(Opportunity).columns('ID')
+                .where({ Oppid: opp.Oppid, objectStatus: 'OPP' })
+            );
+
+            // Copy ALL IP rows from OPP
+            let newShellIPRows = [];
+            if (parentOppNew) {
+              const oppIP = await tx.run(
+                SELECT.from(InvolvedParties).where({ opportunity_ID: parentOppNew.ID })
+              );
+              newShellIPRows = oppIP.map(r => ({
+                ID: cds.utils.uuid(),
+                buspartner: r.buspartner ?? null,
+                role: r.role ?? null,
+                opportunity_ID: newQuoteID
+              }));
+            }
+
+            // Append NEW IP rows from payload (not already in OPP)
+            const shellIPKeys = newShellIPRows.map(r => `${r.buspartner}|${r.role}`);
+            const extraIPRows = (involvedParties || [])
+              .filter(x => !shellIPKeys.includes(`${x?.buspartner}|${x?.role}`))
+              .map(x => ({
+                ID: cds.utils.uuid(),
+                buspartner: x?.buspartner ?? null,
+                role: x?.role ?? null,
+                opportunity_ID: newQuoteID
+              }));
+
+            const allNewIPRows = [...newShellIPRows, ...extraIPRows];
+            if (allNewIPRows.length > 0) {
+              await insertInBatches(InvolvedParties, allNewIPRows);
+              console.log(`New Quote IP: ${newShellIPRows.length} from OPP + ${extraIPRows.length} from payload`);
+            }
+
+            // Copy ALL PC rows from OPP
+            let newShellPCRows = [];
+            if (parentOppNew) {
+              const oppPC = await tx.run(
+                SELECT.from(ProviderContract).where({ opportunity_ID: parentOppNew.ID })
+              );
+              newShellPCRows = oppPC.map(r => ({
+                ID: cds.utils.uuid(),
+                product: r.product ?? null,
+                portfolio: r.portfolio ?? null,
+                fixedMWh: r.fixedMWh ?? null,
+                fixedPrice: r.fixedPrice ?? null,
+                portfolioprice: r.portfolioprice ?? null,
+                subspercent: r.subspercent ?? null,
+                startDate: r.startDate ?? null,
+                endDate: r.endDate ?? null,
+                enrollChk: r.enrollChk ?? null,
+                exportDate: r.exportDate ?? null,
+                exportChk: r.exportChk ?? null,
+                opportunity_ID: newQuoteID
+              }));
+            }
+
+            // Append NEW PC rows from payload (not already in OPP)
+            const shellPCKeys = newShellPCRows.map(r => `${r.product}|${r.portfolio}`);
+            const extraPCRows = (providerContracts || [])
+              .filter(x => !shellPCKeys.includes(`${x?.product}|${x?.portfolio}`))
+              .map(x => ({
+                ID: cds.utils.uuid(),
+                product: x?.product ?? null,
+                portfolio: x?.portfolio ?? null,
+                fixedMWh: x?.fixedMWh ?? null,
+                fixedPrice: x?.fixedPrice ?? null,
+                portfolioprice: x?.portfolioprice ?? null,
+                subspercent: x?.subspercent ?? null,
+                startDate: x?.startDate ?? null,
+                endDate: x?.endDate ?? null,
+                enrollChk: x?.enrollChk ?? null,
+                exportDate: x?.exportDate ?? null,
+                exportChk: x?.exportChk ?? null,
+                opportunity_ID: newQuoteID
+              }));
+
+            const allNewPCRows = [...newShellPCRows, ...extraPCRows];
+            if (allNewPCRows.length > 0) {
+              await insertInBatches(ProviderContract, allNewPCRows);
+              console.log(`New Quote PC: ${newShellPCRows.length} from OPP + ${extraPCRows.length} from payload`);
+            }
           }
 
         } else {

@@ -46,6 +46,7 @@ sap.ui.define([
                 enrollmentReferralCode: '',   // SMB — Referral Code (e.g. TONY)
                 enrollmentEmailId: '',        // SMB — Enrollment Email ID
                 lastFetchedAt: '',   // ← persisted timestamp from DB
+                lastFetchedAtISO: '',    // ← ADD: raw ISO for save
                 OppIdSuggestions: [],
                 // Summary bar (LCVP, shown below tablelarge when 2+ rows after Calculate)
                 summarySubFee: '',
@@ -458,6 +459,8 @@ sap.ui.define([
                     hour: "2-digit", minute: "2-digit", second: "2-digit"
                 })
                 : "");
+            
+            oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt || "");
 
             var oOppInput = this.getView().byId("il8");
             if (oOppInput) { oOppInput.setValue(oParsed.Oppid || ''); }
@@ -818,6 +821,7 @@ sap.ui.define([
                         hour: "2-digit", minute: "2-digit", second: "2-digit"
                     });
                     oSCDetail.setProperty("/lastFetchedAt", sFormatted);
+                    oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt);
                 }
             } catch (e) {
                 console.warn("Could not persist lastFetchedAt:", e.message);
@@ -2973,7 +2977,8 @@ sap.ui.define([
                     salesPhase: sSalesPhase,
                     enrollmentReferralCode: s(oHdr.getProperty("/enrollmentReferralCode")),
                     enrollmentEmailId: s(oHdr.getProperty("/enrollmentEmailId")),
-                    lastFetchedAt: s(oHdr.getProperty("/lastFetchedAt")),   // ← persisted timestamp from DB
+                    // lastFetchedAt: s(oHdr.getProperty("/lastFetchedAt")),   // ← persisted timestamp from DB
+                    lastFetchedAt: s(oHdr.getProperty("/lastFetchedAtISO")),
                 };
 
                 // ── Build tab data ───────────────────────────────────────────
