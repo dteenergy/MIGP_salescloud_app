@@ -188,6 +188,7 @@
             <ComboBox id="idModel_CS" selectionChange="onComboBoxtype"  editable="false"  enabled="false" class="noGreyCombo">
                 <core:Item id="_IDGenItem9" key="MIGP - Small Business" text="MIGP - Small Business"/>
                 <core:Item id="_IDGenItem10" key="MIGP - LCVP"                  text="MIGP - LCVP"/>
+                <core:Item id="_IDGenItem100" key="MIGP - Dedicated Array"      text="MIGP - Dedicated Array"/>
                 <layoutData><l:GridData id="_IDGenGridData11" span="XL7 L7 M12 S12"/></layoutData>
             </ComboBox>
 
@@ -452,7 +453,16 @@
               <Column id="_IDGenColumn29"><Text id="_IDGenText52" text="Est. Usage (MWh)"/></Column>
               <!-- BTP suggestion #4 -->
               <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column>
-              <Column id="_IDGenColumn30b"><Text id="_IDGenText5" text="Export"/></Column>
+              <!-- <Column id="_IDGenColumn30b"><Text id="_IDGenText5" text="Export"/></Column> -->
+              <Column id="_IDGenColumn30b">
+    <HBox id="_IDGenHBox1" alignItems="Center">
+        <CheckBox id="idSelectAllExportSMB"
+                  selected="false"
+                  select="onSelectAllExportSMB"
+                  tooltip="Select / Deselect all rows for Export"/>
+        <Text id="_IDGenText5" text="Export"/>
+    </HBox>
+</Column>
               <Column id="_IDGenColumn31"><Text id="_IDGenText54" text="Export Date"/></Column>
             </columns>
             <items>
@@ -500,7 +510,7 @@
                   <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/>
                   <CheckBox id="_IDGenCheckBox1b"
     selected="{oOpportunityjmodel>exportChk}"/>
-                  <Input id="_IDGenInput8" value="{oOpportunityjmodel>exportDate}" editable="true"
+                  <Input id="_IDGenInput8" value="{oOpportunityjmodel>exportDate}" editable="false"
                          placeholder="Auto-filled on export"/>
                 </cells>
               </ColumnListItem>
@@ -526,7 +536,16 @@
               <Column id="_IDGenColumn44"><Text id="_IDGenText67" text="REC MWh"/></Column>
               <!-- BTP suggestion #4 -->
               <Column id="_IDGenColumn45"><Text id="_IDGenText68" text="Enroll"/></Column>
-              <Column id="_IDGenColumn45b"><Text id="_IDGenText73" text="Export"/></Column>   
+              <!-- <Column id="_IDGenColumn45b"><Text id="_IDGenText73" text="Export"/></Column>    -->
+              <Column id="_IDGenColumn45b">
+    <HBox id="_IDGenHBox2" alignItems="Center">
+        <CheckBox id="idSelectAllExportLCVP"
+                  selected="false"
+                  select="onSelectAllExportLCVP"
+                  tooltip="Select / Deselect all rows for Export"/>
+        <Text id="_IDGenText73" text="Export"/>
+    </HBox>
+</Column>
               <Column id="_IDGenColumn46"><Text id="_IDGenText69" text="Export Date"/></Column>
             </columns>
             <items>
@@ -577,7 +596,7 @@
                   <CheckBox id="_IDGenCheckBox2" selected="{oOpportunityjmodel>enrollChk}"/>
                   <CheckBox id="_IDGenCheckBox2b"
     selected="{oOpportunityjmodel>exportChk}"/>  
-                  <Input id="_IDGenInput22" value="{oOpportunityjmodel>exportDate}"  editable="true" showClearIcon="true"
+                  <Input id="_IDGenInput22" value="{oOpportunityjmodel>exportDate}"  editable="false"
                          placeholder="Auto-filled on export"/>
                 </cells>
               </ColumnListItem>
@@ -627,8 +646,9 @@
             <OverflowToolbar id="_IDGenOverflowToolbar2">
               <ToolbarSpacer id="_IDGenToolbarSpacer2"/>
               <!-- FDD Export spec: available for both SMB & LCVP, disabled for One-time Sale (FDD #51) -->
-              <Button id="idbtnExport" text="Export File" type="Ghost" icon="sap-icon://download"
+              <Button id="idbtnExport" text="Export File" type="Emphasized" icon="sap-icon://download"
                       press="onExportFile"
+                      visible="{= ${oSCDetail>/isQuoteContext} === true }"
                       tooltip="Export Provider Contract details for selected CAs to Excel. Disabled for One-time Sale."/>
             </OverflowToolbar>
           </content>

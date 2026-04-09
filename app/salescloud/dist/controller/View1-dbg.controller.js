@@ -97,41 +97,44 @@ sap.ui.define([
         //UserRoles
         getUserDetails: async function () {
             let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
-                oUserScopeJModel.setData("");
+            oUserScopeJModel.setData("");
 
-                let omodel = this.getOwnerComponent().getModel();
-                let oOperation = omodel.bindContext("/userDetails(...)");
-                try{
-                    await oOperation.execute().then(function (res) {
-                        let oResults = oOperation.getBoundContext().getObject();
-                                 
-                        if (oResults) {
-                            oUserScopeJModel.setData(oResults);
-                            if (oUserScopeJModel.oData.hasAdminAccess) {
-                                this.getView().byId("idcommLetterSent").setEnabled(true);
-                                this.getView().byId("idcommLetterSigned").setEnabled(true);
-                                this.getView().byId("idbtnExport").setVisible(true);
-                            }
-                            else if (oUserScopeJModel.oData.hasUserAccess){
-                                this.getView().byId("idcommLetterSent").setEnabled(false);
-                                this.getView().byId("idcommLetterSigned").setEnabled(false);
-                                this.getView().byId("idbtnExport").setVisible(false);
-                            }
-                        } else {
-                            
+            let omodel = this.getOwnerComponent().getModel();
+            let oOperation = omodel.bindContext("/userDetails(...)");
+            try {
+                await oOperation.execute().then(function (res) {
+                    let oResults = oOperation.getBoundContext().getObject();
+
+                    if (oResults) {
+                        oUserScopeJModel.setData(oResults);
+                        if (oUserScopeJModel.oData.hasAdminAccess) {
+                            this.getView().byId("idcommLetterSent").setEnabled(true);
+                            this.getView().byId("idcommLetterSigned").setEnabled(true);
+                            // this.getView().byId("idbtnExport").setVisible(true);
+                            this.getView().byId("idbtnExport").setVisible(
+                                this.getView().getModel("oSCDetail").getProperty("/isQuoteContext")
+                            );
                         }
-                    }.bind(this), function (err) {
-                       let message = err.message + "\n Roles not found! Contact support admin!";
-                        sap.m.MessageBox.error(err.message);
-                        console.error(err.message);
+                        else if (oUserScopeJModel.oData.hasUserAccess) {
+                            this.getView().byId("idcommLetterSent").setEnabled(false);
+                            this.getView().byId("idcommLetterSigned").setEnabled(false);
+                            this.getView().byId("idbtnExport").setVisible(false);
+                        }
+                    } else {
 
-                    }.bind(this))
+                    }
+                }.bind(this), function (err) {
+                    let message = err.message + "\n Roles not found! Contact support admin!";
+                    sap.m.MessageBox.error(err.message);
+                    console.error(err.message);
 
-                }
-            catch (oError){
+                }.bind(this))
+
+            }
+            catch (oError) {
                 console.error(oError);
             }
-            
+
         },
 
         // ── Sales Phase definitions per BPD ──────────────────────────────────
@@ -147,6 +150,16 @@ sap.ui.define([
                 { code: "Z4", text: "Closure" }
             ],
             "MIGP - LCVP": [
+                { code: "Z5", text: "Origination" },
+                { code: "Z6", text: "Introduction" },
+                { code: "Z7", text: "Discovery" },
+                { code: "Z8", text: "Structuring" },
+                { code: "Z0", text: "Approval" },
+                { code: "Z9", text: "Contracting" },
+                { code: "Z3", text: "Final Review" },
+                { code: "Z4", text: "Closure" }
+            ],
+            "MIGP - Dedicated Array": [
                 { code: "Z5", text: "Origination" },
                 { code: "Z6", text: "Introduction" },
                 { code: "Z7", text: "Discovery" },
@@ -459,7 +472,7 @@ sap.ui.define([
                     hour: "2-digit", minute: "2-digit", second: "2-digit"
                 })
                 : "");
-            
+
             oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt || "");
 
             var oOppInput = this.getView().byId("il8");
@@ -702,7 +715,7 @@ sap.ui.define([
         // onFetchOpp — triggered by Enter key (submit) or suggestion select
         // ─────────────────────────────────────────────────────────────────────
         onFetchOpp: async function () {
-            
+
             var sOppId = this.getView().byId("il8").getValue().trim();
             if (!sOppId) { MessageBox.error("Please enter an Opportunity ID."); return; }
             var oModel = this.getOwnerComponent().getModel();
@@ -732,7 +745,7 @@ sap.ui.define([
                 console.error("getOpportunityRecord failed:", err.message);
                 MessageBox.error("Failed to fetch opportunity: " + err.message);
             }
-            
+
         },
 
         onSpecialsExist: function (bExists) { console.log("onSpecialsExist:", bExists); },
@@ -742,7 +755,7 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         onComboBoxtype: function () {
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
-            var bIsLCVP = (sCategory === "MIGP - LCVP");
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array" );
             var bIsSMB = (sCategory === "MIGP - Small Business" || sCategory === "MIGP Small Business");
 
             this.getView().byId("tablesmall").setVisible(bIsSMB);
@@ -1106,7 +1119,7 @@ sap.ui.define([
             }
 
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
-            var bIsLCVP = (sCategory === "MIGP - LCVP");
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
 
             // ── STEP 1: Gross Annual Usage — ALL CAs regardless of selection (FDD #1) ──
             var aCARows = oTabModel.getProperty("/ConsumptionDetails") || [];
@@ -2050,6 +2063,24 @@ sap.ui.define([
             oTabModel.setProperty("/ConsumptionDetails", aUpdated);
         },
 
+        // ── onSelectAllExportSMB — Select/Deselect all Export checkboxes in SMB table ──
+        onSelectAllExportSMB: function (oEvent) {
+            var bSelected = oEvent.getParameter("selected");
+            var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
+            var aPC = oTabModel.getProperty("/ProviderContracts") || [];
+            aPC.forEach(function (r) { r.exportChk = bSelected; });
+            oTabModel.setProperty("/ProviderContracts", aPC);
+        },
+
+        // ── onSelectAllExportLCVP — Select/Deselect all Export checkboxes in LCVP table ──
+        onSelectAllExportLCVP: function (oEvent) {
+            var bSelected = oEvent.getParameter("selected");
+            var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
+            var aPC = oTabModel.getProperty("/ProviderContracts") || [];
+            aPC.forEach(function (r) { r.exportChk = bSelected; });
+            oTabModel.setProperty("/ProviderContracts", aPC);
+        },
+
         // ─────────────────────────────────────────────────────────────────────
         // onCARowSelect — individual row checkbox — sync Select All header state
         // ─────────────────────────────────────────────────────────────────────
@@ -2082,24 +2113,45 @@ sap.ui.define([
                     sortItems: [
                         new sap.m.ViewSettingsItem({ key: "selected", text: "Selected First" }),
                         new sap.m.ViewSettingsItem({ key: "contacc", text: "Contract Account" }),
-                        new sap.m.ViewSettingsItem({ key: "est12month", text: "12 Month Est Usage" }),
                         new sap.m.ViewSettingsItem({ key: "buspartner", text: "Business Partner" }),
+                        new sap.m.ViewSettingsItem({ key: "est12month", text: "Est. Usage (MWh)" }),
                         new sap.m.ViewSettingsItem({ key: "metered", text: "Metered" }),
-                        new sap.m.ViewSettingsItem({ key: "inactive", text: "Inactive" })
+                        new sap.m.ViewSettingsItem({ key: "arrear60", text: "60-Day Arrear" }),
+                        new sap.m.ViewSettingsItem({ key: "nsfFlag", text: "2-NSF" }),
+                        new sap.m.ViewSettingsItem({ key: "replacementCA", text: "Replacement CA" }),
+                        new sap.m.ViewSettingsItem({ key: "inactive", text: "Inactive" }),
+                        new sap.m.ViewSettingsItem({ key: "cycle20", text: "Cycle 20" }),
+                        new sap.m.ViewSettingsItem({ key: "providercontractId", text: "PC ID" }),
+                        new sap.m.ViewSettingsItem({ key: "enrolled", text: "Enrolled" }),
+                        new sap.m.ViewSettingsItem({ key: "validity", text: "Validity" })
                     ],
                     filterItems: [
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "selected", text: "Selected",
+                            items: [
+                                new sap.m.ViewSettingsItem({ key: "selected:true", text: "Selected" }),
+                                new sap.m.ViewSettingsItem({ key: "selected:false", text: "Not Selected" })
+                            ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "contacc", text: "Contract Account",
+                            items: [
+                                // populated dynamically
+                                // Note: static values won't scale — see note below
+                            ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "buspartner", text: "Business Partner",
+                            items: [
+                                // populated dynamically like contacc below
+                            ]
+                        }),
+
                         new sap.m.ViewSettingsFilterItem({
                             key: "metered", text: "Metered",
                             items: [
                                 new sap.m.ViewSettingsItem({ key: "metered:Yes", text: "Yes" }),
                                 new sap.m.ViewSettingsItem({ key: "metered:No", text: "No" })
-                            ]
-                        }),
-                        new sap.m.ViewSettingsFilterItem({
-                            key: "inactive", text: "Inactive",
-                            items: [
-                                new sap.m.ViewSettingsItem({ key: "inactive:Yes", text: "Yes" }),
-                                new sap.m.ViewSettingsItem({ key: "inactive:No", text: "No" })
                             ]
                         }),
                         new sap.m.ViewSettingsFilterItem({
@@ -2117,11 +2169,40 @@ sap.ui.define([
                             ]
                         }),
                         new sap.m.ViewSettingsFilterItem({
-                            key: "selected", text: "Selected",
+                            key: "replacementCA", text: "Replacement CA",
                             items: [
-                                new sap.m.ViewSettingsItem({ key: "selected:true", text: "Selected" }),
-                                new sap.m.ViewSettingsItem({ key: "selected:false", text: "Not Selected" })
+                                new sap.m.ViewSettingsItem({ key: "replacementCA:Yes", text: "Yes" }),
+                                new sap.m.ViewSettingsItem({ key: "replacementCA:No", text: "No" })
                             ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "inactive", text: "Inactive",
+                            items: [
+                                new sap.m.ViewSettingsItem({ key: "inactive:Yes", text: "Yes" }),
+                                new sap.m.ViewSettingsItem({ key: "inactive:No", text: "No" })
+                            ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "cycle20", text: "Cycle 20",
+                            items: [
+                                new sap.m.ViewSettingsItem({ key: "cycle20:Yes", text: "Yes" }),
+                                new sap.m.ViewSettingsItem({ key: "cycle20:No", text: "No" })
+                            ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "providercontractId", text: "PC ID",
+                            items: []   // populated dynamically
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "enrolled", text: "Enrolled",
+                            items: [
+                                new sap.m.ViewSettingsItem({ key: "enrolled:Yes", text: "Yes" }),
+                                new sap.m.ViewSettingsItem({ key: "enrolled:No", text: "No" })
+                            ]
+                        }),
+                        new sap.m.ViewSettingsFilterItem({
+                            key: "validity", text: "Validity",
+                            items: []   // populated dynamically
                         })
                     ],
                     confirm: function (oConfirmEvent) {
@@ -2148,18 +2229,75 @@ sap.ui.define([
                         }
 
                         if (mParams.filterItems && mParams.filterItems.length > 0) {
+                            // var aFilters = mParams.filterItems.map(function (oItem) {
+                            //     var aParts = oItem.getKey().split(":");
+                            //     return new sap.ui.model.Filter(aParts[0], sap.ui.model.FilterOperator.EQ, aParts[1]);
+                            // });
                             var aFilters = mParams.filterItems.map(function (oItem) {
                                 var aParts = oItem.getKey().split(":");
-                                return new sap.ui.model.Filter(aParts[0], sap.ui.model.FilterOperator.EQ, aParts[1]);
+                                var sField = aParts[0];
+                                var sVal = aParts[1];
+
+                                // Fields that store "" instead of "No"
+                                var aEmptyMeansNo = ["arrear60", "nsfFlag", "replacementCA", "inactive", "cycle20", "enrolled", "providercontractId"];
+                                if (aEmptyMeansNo.indexOf(sField) !== -1 && sVal === "No") {
+                                    return new sap.ui.model.Filter(sField, sap.ui.model.FilterOperator.EQ, "");
+                                }
+                                // selected is stored as boolean, not string
+                                if (sField === "selected") {
+                                    return new sap.ui.model.Filter(sField, sap.ui.model.FilterOperator.EQ, sVal === "true");
+                                }
+                                return new sap.ui.model.Filter(sField, sap.ui.model.FilterOperator.EQ, sVal);
                             });
                             oBinding.filter(aFilters, sap.ui.model.FilterType.Application);
                         } else {
                             oBinding.filter([], sap.ui.model.FilterType.Application);
                         }
-                    }
+                    },
+                    reset: function () {
+                        var oTable = this.getView().byId("tableISUCA");
+                        var oBinding = oTable.getBinding("items");
+                        oBinding.filter([], sap.ui.model.FilterType.Application);
+                        oBinding.sort(null);
+                        this._aAllCAContextData = null; // clear cache so next open re-reads all rows
+                    }.bind(this)
                 });
                 this.getView().addDependent(this._oCASettingsDialog);
             }
+            // Just before this._oCASettingsDialog.open():
+            var oTable = this.getView().byId("tableISUCA");
+            var oBinding = oTable.getBinding("items");
+
+            // Cache all CA values from the full unfiltered list on first open
+            if (!this._aAllCAContextData) {
+                this._aAllCAContextData = oBinding.getCurrentContexts()
+                    .map(ctx => ctx.getObject());
+            }
+            var aAllData = this._aAllCAContextData;
+
+            var aDynamicFields = [
+                { key: "contacc", label: "contacc" },
+                { key: "buspartner", label: "buspartner" },
+                { key: "providercontractId", label: "providercontractId" },
+                { key: "validity", label: "validity" }
+            ];
+
+            aDynamicFields.forEach(function (field) {
+                var aVals = [...new Set(
+                    aAllData.map(row => row[field.key]).filter(Boolean)
+                )].sort();
+
+                var oFilterItem = this._oCASettingsDialog.getFilterItems()
+                    .find(f => f.getKey() === field.key);
+                if (oFilterItem) {
+                    oFilterItem.destroyItems();
+                    aVals.forEach(function (val) {
+                        oFilterItem.addItem(new sap.m.ViewSettingsItem({
+                            key: field.key + ":" + val, text: val
+                        }));
+                    });
+                }
+            }.bind(this));
             this._oCASettingsDialog.open();
         },
 
@@ -2378,12 +2516,21 @@ sap.ui.define([
                 return;
             }
 
-            var aPC = oTabModel.getProperty("/ProviderContracts") || [];
+            // var aPC = oTabModel.getProperty("/ProviderContracts") || [];
+            var aAllPC = oTabModel.getProperty("/ProviderContracts") || [];
+            var aPC = aAllPC.filter(function (r) {
+                return r.exportChk === true || r.exportChk === 'true';
+            });
+
+            if (aPC.length === 0) {
+                MessageBox.warning("Please check at least one Export row in Provider Contract before exporting.");
+                return;
+            }
             var sOppid = oSCDetail.getProperty("/Oppid") || '';
             var sNTE = oSCDetail.getProperty("/nte") || '';
             var sCategory = oSCDetail.getProperty("/oppCategory") || '';
             var sExportDate = new Date().toLocaleDateString();
-            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "Dedicated Array");
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
             var sReferralCode = oSCDetail.getProperty("/enrollmentReferralCode") || '';
             var sEmailAddress = oSCDetail.getProperty("/enrollmentEmailId") || '';
             var aExportRows = [];
@@ -2400,8 +2547,9 @@ sap.ui.define([
             };
 
             aCA.forEach(function (oCA) {
-                var aPCLoop = aPC.length > 0 ? aPC : [{}];
-                aPCLoop.forEach(function (oPC) {
+                // var aPCLoop = aPC.length > 0 ? aPC : [{}];
+                // aPCLoop.forEach(function (oPC) {
+                aPC.forEach(function (oPC) {
 
                     // ── Term calculation ─────────────────────────────────────
                     var termMonths = 0;
@@ -2469,21 +2617,66 @@ sap.ui.define([
                     new Date().toISOString().slice(0, 10) + ".xlsx";
                 XLSX.writeFile(wb, sFileName);
 
-                this._stampExportDate(aPC, sExportDate);
+                // this._stampExportDate(aPC, sExportDate);
+                this._stampExportDate(aAllPC, sExportDate);
+                this._silentSaveExportDate();
                 MessageToast.show("Exported " + aExportRows.length + " row(s) → " + sFileName);
 
             } catch (e) {
                 console.warn("SheetJS unavailable, falling back to CSV:", e.message);
                 this._downloadCSV(aExportRows, sOppid);
                 this._stampExportDate(aPC, sExportDate);
+                this._silentSaveExportDate();
             }
         },
 
-        _stampExportDate: function (aPC, sDate) {
-            if (!aPC || !aPC.length) { return; }
-            aPC.forEach(function (r) { r.exportDate = sDate; });
+        _stampExportDate: function (aAllPC, sDate) {
+            if (!aAllPC || !aAllPC.length) { return; }
+            aAllPC.forEach(function (r) {
+                if (r.exportChk === true || r.exportChk === 'true') {
+                    r.exportDate = sDate;
+                }
+            });
             this.getOwnerComponent().getModel("oOpportunityjmodel")
-                .setProperty("/ProviderContracts", aPC);
+                .setProperty("/ProviderContracts", aAllPC);
+        },
+
+        _silentSaveExportDate: async function () {
+            try {
+                var oModel = this.getOwnerComponent().getModel();
+                var oHdr = this.getView().getModel("oSCDetail");
+                var oTabs = this.getOwnerComponent().getModel("oOpportunityjmodel");
+                var aAllPC = oTabs.getProperty("/ProviderContracts") || [];
+
+                // Send ALL rows with their exportChk + exportDate state
+                // Backend will update each row individually based on product+portfolio key
+                var aPC = aAllPC.map(function (r) {
+                    return {
+                        product: r.product || '',
+                        portfolio: r.portfolio || '',
+                        exportChk: (r.exportChk === true || r.exportChk === 'true') ? 'true' : 'false',
+                        exportDate: (r.exportChk === true || r.exportChk === 'true') ? (r.exportDate || '') : ''
+                    };
+                });
+
+                if (!aPC.length) { return; }
+
+                var oAction = oModel.bindContext("/saveExportDate(...)");
+                oAction.setParameter("bundle", JSON.stringify({
+                    oppId: oHdr.getProperty("/Oppid"),
+                    quoteId: oHdr.getProperty("/quoteId"),
+                    objectStatus: oHdr.getProperty("/objectStatus"),
+                    providerContracts: aPC
+                }));
+                await oAction.execute();
+                console.log("exportDate silently saved for",
+                    oHdr.getProperty("/objectStatus") === "QUOTE"
+                        ? "Quote: " + oHdr.getProperty("/quoteId")
+                        : "Opp: " + oHdr.getProperty("/Oppid")
+                );
+            } catch (e) {
+                console.error("_silentSaveExportDate failed:", e.message);
+            }
         },
 
         _downloadCSV: function (aRows, sOppid) {
@@ -2552,7 +2745,7 @@ sap.ui.define([
             var oCB = this.getView().byId("idsalesPhase");
             if (!oCB) { return; }
 
-            var bIsLCVP = (sCategory === "MIGP - LCVP");
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
             var bIsSMB = (sCategory === "MIGP - Small Business");
             var aAllPhases = (this._oSalesPhases[sCategory] || []);
 
@@ -2895,7 +3088,7 @@ sap.ui.define([
 
                 // ── LCVP Sales Phase validations ─────────────────────────────
                 // Runs only for LCVP + only for BTP→C4C phases (Z0, Z9, Z4)
-                if (oppCategory === "MIGP - LCVP") {
+                if (oppCategory === "MIGP - LCVP" || oppCategory === "MIGP - Dedicated Array") {
 
                     // Z0 Approval — Sub% must be filled on ALL PC rows
                     if (sSalesPhase === "Z0") {
@@ -3068,7 +3261,7 @@ sap.ui.define([
                     // Z4 = Closure     → BTP pushes to C4C (after receiving Z3)
                     // Z8, Z3 are C4C→BTP — BTP never pushes these back
                     var aBTPPushPhases = ["Z0", "Z9", "Z4"];
-                    if (oppCategory === "MIGP - LCVP" &&
+                    if ((oppCategory === "MIGP - LCVP" || oppCategory === "MIGP - Dedicated Array") &&
                         aBTPPushPhases.indexOf(sSalesPhase) !== -1) {
                         try {
                             var oPhaseOp = oModel.bindContext("/pushSalesPhaseToC4C(...)");

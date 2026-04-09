@@ -122,6 +122,7 @@ service CloudService {
   action initiateEnrollment(bundle: String)     returns String;  // ✅ ADD
   action changeBillingCycle(bundle: String)     returns String;  // ✅ ADD
   action updateLastFetchedAt(oppId: String, objectStatus: String, quoteId: String)     returns String;
+  action saveExportDate(bundle: String) returns String;
 }
 
 // ── CPIService ────────────────────────────────────────────────────────────────
