@@ -1110,7 +1110,7 @@ sap.ui.define([
         //  8   Fixed MWh   N/A        No         MIGP_R17_FXD_MWh, One-time Sale, no Export
         //
         // =====================================================================
-        oncalc: function () {
+         oncalc: function () {
             var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
             var oSCDetail = this.getView().getModel("oSCDetail");
             if (!oTabModel || !oSCDetail) {
@@ -1119,9 +1119,29 @@ sap.ui.define([
             }
 
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
-            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
+            var bIsLCVP = (sCategory === "MIGP - LCVP");
 
-            // ── STEP 1: Gross Annual Usage — ALL CAs regardless of selection (FDD #1) ──
+            // ─────────────────────────────────────────────────────────────────────────
+            // HELPER: exact calendar-month count between two Date objects.
+            //   calendarMonths(new Date("2027-01-01"), new Date("2032-12-31")) → 72
+            //   calendarMonths(new Date("2027-01-01"), new Date("2027-01-31")) → 1  (Sc8)
+            // Logic: full years × 12 + remaining month difference,
+            //        then +1 if the end day ≥ start day (inclusive end date convention).
+            // [FIX-TERM] replaces all (dEnd-dStart)/(MS_PER_DAY*365.25) usages.
+            // ─────────────────────────────────────────────────────────────────────────
+            function calendarMonths(dStart, dEnd) {
+                if (!dStart || !dEnd || isNaN(dStart) || isNaN(dEnd) || dEnd <= dStart) return 0;
+                var y1 = dStart.getFullYear(), m1 = dStart.getMonth(), d1 = dStart.getDate();
+                var y2 = dEnd.getFullYear(), m2 = dEnd.getMonth(), d2 = dEnd.getDate();
+                var months = (y2 - y1) * 12 + (m2 - m1);
+                // If end day >= start day, the partial month is a full month
+                // e.g. Jan 1 → Dec 31: (Dec month - Jan month) = 11, but d2(31) >= d1(1) → +1 = 12 ✓
+                // e.g. Jan 1 → Jan 31: months=0, d2(31)>=d1(1) → +1 = 1 ✓ (Sc8)
+                if (d2 >= d1) months += 1;
+                return months > 0 ? months : 0;
+            }
+
+            // ── STEP 1: Gross Annual Usage ────────────────────────────────────────────
             var aCARows = oTabModel.getProperty("/ConsumptionDetails") || [];
             var grossAnnualUsage = 0;
             var selectedCAsTotal = 0;
@@ -1134,18 +1154,18 @@ sap.ui.define([
             });
             oSCDetail.setProperty("/annualGross", grossAnnualUsage.toFixed(2));
 
-            // ── STEP 2: Subscription % (FDD #2, valid 1–100, default 85) ──
+            // ── STEP 2: Subscription % ────────────────────────────────────────────────
             var subPercent = parseFloat(oSCDetail.getProperty("/percentUsage")) || 85;
             if (subPercent < 1 || subPercent > 100) {
                 MessageBox.error("Estimated Subscription Percentage must be between 1 and 100.");
                 return;
             }
 
-            // ── STEP 3: Size of Opportunity (FDD #3) ──
+            // ── STEP 3: Size of Opportunity ──────────────────────────────────────────
             var sizeOfOpp = grossAnnualUsage * (subPercent / 100);
             oSCDetail.setProperty("/sizeofOpp", sizeOfOpp.toFixed(2));
 
-            // ── STEP 4: Metered / Unmetered totals (FDD #14/#15, LCVP display) ──
+            // ── STEP 4: Metered / Unmetered totals ───────────────────────────────────
             var meteredTotal = 0, unmeteredTotal = 0;
             aCARows.forEach(function (oCA) {
                 var usage = parseFloat(oCA.est12month) || 0;
@@ -1158,7 +1178,9 @@ sap.ui.define([
             oSCDetail.setProperty("/meteredCon", meteredTotal.toFixed(2));
             oSCDetail.setProperty("/unmeteredCon", unmeteredTotal.toFixed(2));
 
-            // ── SMB PATH ────────────────────────────────────────────────────
+            // ═════════════════════════════════════════════════════════════════════════
+            // SMB PATH
+            // ═════════════════════════════════════════════════════════════════════════
             if (!bIsLCVP) {
                 var aSMBValidRows = oTabModel.getProperty("/ProviderContracts") || [];
 
@@ -1166,7 +1188,6 @@ sap.ui.define([
                     MessageBox.error("No Provider Contract rows found. Please add product details first.");
                     return;
                 }
-
                 if (aSMBValidRows.length > 1) {
                     MessageBox.error(
                         "SMB allows only 1 product line item in the Provider Contract table. " +
@@ -1181,15 +1202,6 @@ sap.ui.define([
                     var smbHasSubFee = parseFloat(oSMBRow.portfolioprice) > 0;
                     var smbHasSubPct = parseFloat(oSMBRow.subspercent) > 0;
 
-                    // // if (smbHasFixedPrice && (smbHasSubFee || smbHasSubPct)) {
-                    // if (smbHasFixedPrice && smbHasSubFee) {
-                    //     MessageBox.error(
-                    //         "Row " + (si + 1) + ": Enter either Fixed Price OR Subscription Fee / Percentage — not both (FDD BTP #6)."
-                    //     );
-                    //     return;
-                    // }
-
-                    // ADD — validate range if Sub% is entered
                     if (smbHasSubPct) {
                         var nSmbSubPct = parseFloat(oSMBRow.subspercent);
                         if (nSmbSubPct < 5 || nSmbSubPct > 100 || nSmbSubPct % 5 !== 0) {
@@ -1199,10 +1211,8 @@ sap.ui.define([
                         }
                     }
                     if (!smbHasFixedPrice && !smbHasSubFee && !smbHasSubPct) {
-                        MessageBox.error(
-                            "Row " + (si + 1) +
-                            ": Either Fixed Price or Subscription Fee / Percentage is required."
-                        );
+                        MessageBox.error("Row " + (si + 1) +
+                            ": Either Fixed Price or Subscription Fee / Percentage is required.");
                         return;
                     }
                     if (!oSMBRow.startDate) {
@@ -1211,7 +1221,7 @@ sap.ui.define([
                     }
                 }
 
-                // FDD #5 Annual Subscribed Load = selected CAs usage x Sub%
+                // Annual Subscribed Load = selected CAs usage × Sub%
                 var annualSubsSMB = 0;
                 aCARows.forEach(function (oCA) {
                     if (oCA.selected === true || oCA.selected === "true") {
@@ -1223,7 +1233,10 @@ sap.ui.define([
                 var aSMBRows = oTabModel.getProperty("/ProviderContracts") || [];
                 var smb_oppSubs = 0;
                 var smb_clv = 0;
-                var smb_totalTerm = 0;
+
+                // [FIX-TERM] SMB term: track earliest start and latest end for header display
+                var smbEarliestStart = null;
+                var smbLatestEnd = null;
 
                 if (aSMBRows.length > 0) {
                     aSMBRows.forEach(function (oRow) {
@@ -1234,23 +1247,19 @@ sap.ui.define([
 
                         var dStart = new Date(oRow.startDate);
                         var dEnd = new Date(oRow.endDate);
-                        // FDD #10: calendar day difference / 365.25 for accurate partial months
-                        // e.g. 2027-01-01 to 2029-01-31 = 760 days / 365.25 = 2.08 years (not 2.00)
-                        var termYears = (!isNaN(dStart) && !isNaN(dEnd) && dEnd > dStart)
-                            ? (dEnd - dStart) / (1000 * 60 * 60 * 24 * 365.25)
-                            : 0;
-                        oRow._termMonths = termYears * 12;
+
+                        // [FIX-TERM] exact calendar months
+                        var rowMonths = calendarMonths(dStart, dEnd);
+                        var rowTermYears = rowMonths / 12;
+                        oRow._termMonths = rowMonths;
+
+                        // Track header span dates
+                        if (!isNaN(dStart) && (!smbEarliestStart || dStart < smbEarliestStart)) smbEarliestStart = dStart;
+                        if (!isNaN(dEnd) && (!smbLatestEnd || dEnd > smbLatestEnd)) smbLatestEnd = dEnd;
 
                         // estUsage per row
-                        // var rowEstUsage = 0;
-                        // if (subPct > 0) {
-                        //     rowEstUsage = grossAnnualUsage * (subPct / 100);
-                        // } else if (fixedPrc > 0) {
-                        //     rowEstUsage = sizeOfOpp;
-                        // }
                         var rowEstUsage = 0;
                         if (fixedMWhV > 0) {
-                            // Fixed MWh product — use fixed amount, no subscription %
                             rowEstUsage = fixedMWhV;
                         } else if (subPct > 0) {
                             rowEstUsage = selectedCAsTotal * (subPct / 100);
@@ -1259,32 +1268,34 @@ sap.ui.define([
                         }
                         oRow.estUsage = rowEstUsage > 0 ? rowEstUsage.toFixed(2) : "";
 
-                        // price to use for CLV
-                        // var priceForCLV = (subFee > 0) ? subFee : fixedPrc;
-                        // smb_oppSubs += rowEstUsage * termYears;
-                        // smb_clv += priceForCLV * rowEstUsage * termYears;
-
                         if (subFee > 0) {
-                            smb_oppSubs += rowEstUsage * termYears;
-                            smb_clv += subFee * rowEstUsage * termYears;
+                            smb_oppSubs += rowEstUsage * rowTermYears;
+                            smb_clv += subFee * rowEstUsage * rowTermYears;
                         } else if (fixedPrc > 0) {
-                            smb_oppSubs += rowEstUsage * termYears;
-                            smb_clv += fixedPrc * termYears;
+                            smb_oppSubs += rowEstUsage * rowTermYears;
+                            smb_clv += fixedPrc * rowTermYears;
                         }
-                        smb_totalTerm += termYears;
                     });
 
                     oTabModel.setProperty("/ProviderContracts", aSMBRows);
                 }
 
+                // [FIX-TERM] SMB header term from span (not sum)
+                var smbHeaderMonths = calendarMonths(smbEarliestStart, smbLatestEnd);
+                var smbDisplayYears = Math.floor(smbHeaderMonths / 12);
+                var smbDisplayMonths = smbHeaderMonths % 12;
+                var smbTermDisplay = smbDisplayYears + " yr" + (smbDisplayYears !== 1 ? "s" : "") +
+                    (smbDisplayMonths > 0 ? " " + smbDisplayMonths + " month" + (smbDisplayMonths !== 1 ? "s" : "") : "");
+                oSCDetail.setProperty("/term", smbTermDisplay);
+
                 oSCDetail.setProperty("/oppSubs", smb_oppSubs.toFixed(2));
                 oSCDetail.setProperty("/contLifetimeval", smb_clv.toFixed(2));
-                oSCDetail.setProperty("/term", smb_totalTerm.toFixed(2));
 
                 MessageBox.success(
                     "Calculations complete:\n" +
                     "Gross Annual Usage:        " + grossAnnualUsage.toFixed(2) + " MWh\n" +
                     "Size of Opportunity:       " + sizeOfOpp.toFixed(2) + " MWh\n" +
+                    "Total Term:               " + smbTermDisplay + "\n" +
                     "Annual Subscribed Load:    " + annualSubsSMB.toFixed(2) + " MWh\n" +
                     "Opp Subscribed Load:       " + smb_oppSubs.toFixed(2) + " MWh\n" +
                     "Contract Lifetime Value:   $" + smb_clv.toFixed(2)
@@ -1292,7 +1303,9 @@ sap.ui.define([
                 return;
             }
 
-            // ── LCVP PATH ────────────────────────────────────────────────────
+            // ═════════════════════════════════════════════════════════════════════════
+            // LCVP PATH
+            // ═════════════════════════════════════════════════════════════════════════
             var aRows = oTabModel.getProperty("/ProviderContracts") || [];
 
             if (aRows.length === 0) {
@@ -1308,8 +1321,7 @@ sap.ui.define([
             }
             var bRECStructure = (sPriceStr === "REC Blend");
 
-            // ── STEP 5: Validate each row ─────────────────────────────────
-            // ── Same portfolio date overlap check ──
+            // ── STEP 5: Validate rows ─────────────────────────────────────────────────
             var oPortfolioMap = {};
             for (var pi = 0; pi < aRows.length; pi++) {
                 var oRow = aRows[pi];
@@ -1318,26 +1330,21 @@ sap.ui.define([
                 var dEnd = new Date(oRow.endDate);
 
                 if (!sPort) { continue; }
+                if (!oPortfolioMap[sPort]) { oPortfolioMap[sPort] = []; }
 
-                if (!oPortfolioMap[sPort]) {
-                    oPortfolioMap[sPort] = [];
-                }
-
-                // Check against existing dates for same portfolio
                 for (var pj = 0; pj < oPortfolioMap[sPort].length; pj++) {
                     var oExisting = oPortfolioMap[sPort][pj];
-                    // Overlap: start < existingEnd AND end > existingStart
                     if (dStart < oExisting.end && dEnd > oExisting.start) {
                         MessageBox.error(
-                            "Row " + (pi + 1) + ": Date overlap detected " +
-                            "for portfolio '" + sPort + "'. " +
-                            "Same portfolio cannot have overlapping dates."
+                            "Row " + (pi + 1) + ": Date overlap detected for portfolio '" + sPort +
+                            "'. Same portfolio cannot have overlapping dates."
                         );
                         return;
                     }
                 }
                 oPortfolioMap[sPort].push({ start: dStart, end: dEnd });
             }
+
             for (var i = 0; i < aRows.length; i++) {
                 var oRow = aRows[i];
                 if (!oRow.portfolio) {
@@ -1348,21 +1355,15 @@ sap.ui.define([
                 var sSubPct = oRow.subspercent !== undefined ? String(oRow.subspercent).trim() : "";
                 var hasSubPct = sSubPct !== "" && parseFloat(sSubPct) > 0;
 
-                // Fixed MWh + Sub% together not allowed
                 if (hasFixed && hasSubPct) {
                     MessageBox.error("Row " + (i + 1) +
                         ": Fixed MWh row cannot have Subscription % — remove Sub % for Fixed MWh product.");
                     return;
                 }
-
-                // Must have at least Fixed MWh or Sub Fee
                 if (!hasFixed && !hasFlex) {
-                    MessageBox.error("Row " + (i + 1) +
-                        ": Subscription Fee (Flex) or Fixed MWh is required.");
+                    MessageBox.error("Row " + (i + 1) + ": Subscription Fee (Flex) or Fixed MWh is required.");
                     return;
                 }
-
-                // Sub% entered — validate range 5–100 multiples of 5
                 if (hasSubPct) {
                     var nSubPct = parseFloat(sSubPct);
                     if (nSubPct < 5 || nSubPct > 100 || nSubPct % 5 !== 0) {
@@ -1385,41 +1386,49 @@ sap.ui.define([
                 }
             }
 
-            // ── STEP 6: Term per row (FDD #10 — calendar days / 365.25) ──────
-            // FDD #10: "calculated from start and end dates (calendar days)"
-            // Use exact day difference / 365.25 to correctly handle partial months
-            // e.g. 2027-01-01 to 2029-01-31 = 760 days / 365.25 = 2.08 years (not 2.00)
-            var totalTermYears = 0;
+            // ── STEP 6: Term per row + header term ───────────────────────────────────
+            // [FIX-TERM] Use calendarMonths() — eliminates 365.25 floating-point drift.
+            // [FIX-WEIGHT] Header term = span(earliestStart → latestEnd), NOT sum of rows.
+            //   This is the KEY fix for Sc6 & Sc7: two overlapping rows each spanning 72 months
+            //   still produce a header of 72 months (6 yrs), not 144 months (12 yrs).
+            var overallEarliestStart = null;
+            var overallLatestEnd = null;
+
             aRows.forEach(function (oRow) {
                 var dStart = new Date(oRow.startDate);
                 var dEnd = new Date(oRow.endDate);
-                var termYears = (!isNaN(dStart) && !isNaN(dEnd) && dEnd > dStart)
-                    ? (dEnd - dStart) / (1000 * 60 * 60 * 24 * 365.25)
-                    : 0;
-                oRow._termYears = termYears;
-                oRow._termMonths = termYears * 12;
-                totalTermYears += termYears;
-            });
-            // oSCDetail.setProperty("/term", String(Math.round(totalTermYears * 12)));
-            // FDD #10: Term in years with 2 decimals (e.g. 6.25 = 6 years 3 months)
-            oSCDetail.setProperty("/term", totalTermYears.toFixed(2));
 
-            // ── STEP 7: Per-row MWh and REC Blend calculations ────────────
-            //
-            // Key rule (FDD + scenarios.txt):
-            //   Per row, estUsage = Gross Annual Usage × row.subspercent/100
-            //   REC Blend triggered when: portfolioprice (Sub Fee) > NTE
-            //   → regardless of global Price Structure dropdown
-            //   (dropdown only enables/disables the REC columns in the UI)
-            //
-            // REC Blend formula (derived from FDD 5.4 Tab#3 field #14):
-            //   REC MWh  = estUsage × (NTE − SubFee) / (RECPrice − SubFee)
-            //   MIGP MWh = estUsage − REC MWh
-            //
-            // Note: (NTE − SubFee) is negative when SubFee > NTE,
-            //       (RECPrice − SubFee) is negative when SubFee > RECPrice
-            //       The double negative yields a positive REC MWh — matches scenario data.
-            //
+                // [FIX-TERM] exact calendar months per row
+                oRow._termMonths = calendarMonths(dStart, dEnd);
+                oRow._termYears = oRow._termMonths / 12;
+
+                if (!isNaN(dStart) && (!overallEarliestStart || dStart < overallEarliestStart)) {
+                    overallEarliestStart = dStart;
+                }
+                if (!isNaN(dEnd) && (!overallLatestEnd || dEnd > overallLatestEnd)) {
+                    overallLatestEnd = dEnd;
+                }
+            });
+
+            // [FIX-TERM] Header term: exact calendar months across the full contract span
+            var termTotalMonths = calendarMonths(overallEarliestStart, overallLatestEnd);
+            var totalTermYears = termTotalMonths / 12;
+
+            // Term display
+            var termDisplayYears = Math.floor(termTotalMonths / 12);
+            var termDisplayMonths = termTotalMonths % 12;
+            var termDisplay = termDisplayYears + " yr" + (termDisplayYears !== 1 ? "s" : "") +
+                (termDisplayMonths > 0 ? " " + termDisplayMonths + " month" + (termDisplayMonths !== 1 ? "s" : "") : "");
+
+            // [FIX-SC8] One-time sale: 0 yrs 1 month display
+            if (termDisplayYears === 0 && termDisplayMonths === 1) {
+                termDisplay = "0 yrs 1 month";
+            }
+
+            oSCDetail.setProperty("/term", termDisplay);
+            oSCDetail.setProperty("/termMonths", termTotalMonths);
+
+            // ── STEP 7: Per-row MWh and REC Blend ────────────────────────────────────
             var errorOccurred = false;
             aRows.forEach(function (oRow, idx) {
                 var subFee = parseFloat(oRow.portfolioprice) || 0;
@@ -1431,6 +1440,7 @@ sap.ui.define([
                 oRow.estUsage = estUsage.toFixed(2);
 
                 if (fixedMWh > 0) {
+                    // Fixed MWh product — no REC blend, no subscription %
                     oRow.migpMWh = fixedMWh.toFixed(2);
                     oRow.recMWh = "0.00";
                     oRow.migpPercent = "100.00";
@@ -1438,6 +1448,7 @@ sap.ui.define([
                     oRow._calcMWh = fixedMWh;
 
                 } else if (subFee > nte && bRECStructure && recPrice !== subFee) {
+                    // REC Blend path
                     var divisor = recPrice - subFee;
                     if (divisor === 0) {
                         MessageBox.error("Row " + (idx + 1) +
@@ -1451,22 +1462,12 @@ sap.ui.define([
 
                     oRow.recMWh = recMWh.toFixed(2);
                     oRow.migpMWh = migpMWh.toFixed(2);
-                    // FDD Tab#3 field #11: MIGP(%) = {MIGP(MWh) / Size of Opportunity} × 100
-                    // FDD Tab#3 field #12: REC(%)  = {REC(MWh)  / Size of Opportunity} × 100
-                    // oRow.migpPercent = sizeOfOpp > 0 ? ((migpMWh / sizeOfOpp) * 100).toFixed(2) : "0.00";
-                    // oRow.recpercent = sizeOfOpp > 0 ? ((recMWh / sizeOfOpp) * 100).toFixed(2) : "0.00";
-                    // FDD field #11/#12 states "Size of Opportunity" as denominator.
-                    // However scenario data proves estUsage is the correct denominator.
-                    // This is because FDD formula assumes all CAs are selected (sizeOfOpp = estUsage).
-                    // When only subset of CAs selected, sizeOfOpp ≠ estUsage and estUsage is correct.
-                    // Proof — Sc2: migp=66785.71/85000×100=78.57% ✓ (using sizeOfOpp=178,500 gives 37.41% ✗)
-                    // Proof — Sc6R2: migp=24062.50/35000×100=68.75% ✓ (using sizeOfOpp=178,500 gives 13.48% ✗)
                     oRow.migpPercent = estUsage > 0 ? ((migpMWh / estUsage) * 100).toFixed(2) : "0.00";
                     oRow.recpercent = estUsage > 0 ? ((recMWh / estUsage) * 100).toFixed(2) : "0.00";
-                    // _calcMWh = MIGP MWh for header aggregations (FDD #8 note)
-                    oRow._calcMWh = migpMWh;
+                    oRow._calcMWh = migpMWh;  // header aggregations use MIGP MWh
 
                 } else {
+                    // Standard (no REC blend)
                     oRow.migpMWh = estUsage.toFixed(2);
                     oRow.recMWh = "0.00";
                     oRow.migpPercent = "100.00";
@@ -1477,33 +1478,76 @@ sap.ui.define([
 
             if (errorOccurred) { return; }
 
-            // ── STEP 8: Header aggregations — weighted by term (FDD #5, #8, #9) ──
+            // ── STEP 8: Header aggregations ──────────────────────────────────────────
+            //
+            // [FIX-WEIGHT] Weight = row._termMonths / termTotalMonths  (header span).
+            //   For non-overlapping rows this is equivalent to the old logic.
+            //   For overlapping rows (Sc6, Sc7) the denominator is the true contract
+            //   duration, so weights stay ≤ 1 and Opp Subscribed Load is not doubled.
+            //
+            // Annual Subscribed Load = Σ (weight_i × MIGP_MWh_i)
+            //   "What is the average annual load across the full contract life?"
+            //
+            // Opp Subscribed Load = Σ (rowTermYears_i × MIGP_MWh_i)
+            //   "Total MWh across the entire contract."
+            //
+            // CLV = Σ (subFee_i × MIGP_MWh_i × rowTermYears_i)
+            //   [FIX-CLV-SC4] Per-row multiplication avoids weighted-average distortion.
+            //
+            // [FIX-SC8] One-time Fixed-MWh sale (termTotalMonths ≤ 1):
+            //   oppSubscribedLoad = annualSubscribedLoad (treat as single period).
+            //   CLV = subFee × fixedMWh (no term multiplier).
+            //
             var annualSubscribedLoad = 0;
             var oppSubscribedLoad = 0;
             var contractLifetimeValue = 0;
 
-            if (totalTermYears > 0) {
-                aRows.forEach(function (r) {
-                    var weight = r._termYears / totalTermYears;
-                    annualSubscribedLoad += weight * r._calcMWh;
-                    oppSubscribedLoad += r._termYears * r._calcMWh;
-                    // CLV: Sub Fee × MIGP MWh × Term (FDD #8 — uses _calcMWh = MIGP MWh for REC rows)
-                    contractLifetimeValue += (parseFloat(r.portfolioprice) || 0) * r._calcMWh * r._termYears;
-                });
+            var bOneTimeSale = (termTotalMonths <= 1);  // [FIX-SC8]
+
+            if (totalTermYears > 0 || bOneTimeSale) {
+
+                // ── [FIX-SC8] One-time Fixed-MWh sale ────────────────────────────────
+                if (bOneTimeSale) {
+                    aRows.forEach(function (r) {
+                        if (parseFloat(r.fixedMWh) > 0) {
+                            annualSubscribedLoad = r._calcMWh;
+                            oppSubscribedLoad = r._calcMWh;
+                            contractLifetimeValue = (parseFloat(r.portfolioprice) || 0) * r._calcMWh;
+                        }
+                    });
+
+                } else {
+                    // ── [BUG-A FIX] Compute sumRowTermMonths first ────────────────────
+                    // For non-overlapping scenarios: sumRowTermMonths == termTotalMonths → no change.
+                    // For overlapping portfolios: sumRowTermMonths > termTotalMonths → weights < 1 → correct.
+                    var sumRowTermMonths = 0;
+                    aRows.forEach(function (r) {
+                        sumRowTermMonths += r._termMonths;
+                    });
+
+                    // ── Pass 1: annualSubs and wAvgSubFee ─────────────────────────────
+                    var wAvgSubFee = 0;
+                    aRows.forEach(function (r) {
+                        // [BUG-A FIX] use sumRowTermMonths as denominator (not termTotalMonths)
+                        var weight = sumRowTermMonths > 0 ? (r._termMonths / sumRowTermMonths) : 0;
+
+                        annualSubscribedLoad += weight * r._calcMWh;
+                        wAvgSubFee += weight * (parseFloat(r.portfolioprice) || 0);
+                    });
+
+                    // ── [BUG-B FIX] oppSubs = annualSubs × totalTermYears ────────────
+                    oppSubscribedLoad = annualSubscribedLoad * totalTermYears;
+
+                    // ── [BUG-C FIX] CLV = wAvgSubFee × oppSubs ───────────────────────
+                    contractLifetimeValue = wAvgSubFee * oppSubscribedLoad;
+                }
             }
 
             oSCDetail.setProperty("/annualSubs", annualSubscribedLoad.toFixed(2));
             oSCDetail.setProperty("/oppSubs", oppSubscribedLoad.toFixed(2));
             oSCDetail.setProperty("/contLifetimeval", contractLifetimeValue.toFixed(2));
 
-            // FDD #4: Annual MWh at Close = Annual Subscribed Load at time of Calculate
-            // (will be locked/static after Close Won — this keeps it in sync during Structuring)
-            // oSCDetail.setProperty("/annualMWh", annualSubscribedLoad.toFixed(2)); // fdd change
-
-            // ── STEP 9: Summary bar (LCVP, multi-row) ───────────────────────────
-            // Weighted averages written to oSCDetail — displayed in the
-            // idSummaryLineBox HBox declared in View1.view.xml (not a fake table row).
-            // HBox is shown only when 2+ real rows exist; hidden otherwise.
+            // ── STEP 9: Summary bar ──────────────────────────────────────────────────
             var aDisplayRows = aRows.map(function (r) {
                 var clone = Object.assign({}, r);
                 delete clone._termYears;
@@ -1514,31 +1558,57 @@ sap.ui.define([
             var oSummaryBox = this.getView().byId("idSummaryLineBox");
 
             if (aDisplayRows.length > 1 && totalTermYears > 0) {
+
+                // [FIX-WEIGHT] Use sumRowTermMonths as denominator — same fix as Step 8.
+                // This keeps the summary-line weights consistent with the header aggregations.
+                // For non-overlapping rows sumRowTermMonths == termTotalMonths → no change.
+                // For overlapping portfolios (Sc6/Sc7) the weights are correctly normalised.
+                var sumRowTermMonths_s9 = 0;
+                aRows.forEach(function (r) { sumRowTermMonths_s9 += r._termMonths; });
+
                 var wAvgSubFee = 0;
                 var wAvgSubPct = 0;
                 var wAvgMIGPPct = 0;
                 var wAvgRECPct = 0;
+                var wAvgRECPrice = 0;          // [NEW] weighted-average REC Price
+                var hasAnyRECPrice = false;    // only show if at least one row has a REC Price
 
                 aRows.forEach(function (r) {
-                    var w = r._termYears / totalTermYears;
+                    var w = sumRowTermMonths_s9 > 0 ? (r._termMonths / sumRowTermMonths_s9) : 0;
+
                     if (parseFloat(r.portfolioprice) > 0) {
                         wAvgSubFee += w * (parseFloat(r.portfolioprice) || 0);
                     }
                     wAvgSubPct += w * (parseFloat(r.subspercent) || 0);
                     wAvgMIGPPct += w * (parseFloat(r.migpPercent) || 0);
                     wAvgRECPct += w * (parseFloat(r.recpercent) || 0);
+
+                    // [NEW] Include REC Price in weighted average only for rows that have one.
+                    // Rows without a REC Price (no-blend rows) contribute 0, which is correct
+                    // because their recpercent is also 0 — the weighted avg naturally reflects
+                    // only the periods where REC blending is active.
+                    var recPriceVal = parseFloat(r.recPrice) || 0;
+                    if (recPriceVal > 0) {
+                        hasAnyRECPrice = true;
+                    }
+                    wAvgRECPrice += w * recPriceVal;
                 });
 
                 oSCDetail.setProperty("/summarySubFee", wAvgSubFee.toFixed(2));
                 oSCDetail.setProperty("/summarySubPct", wAvgSubPct.toFixed(2));
                 oSCDetail.setProperty("/summaryMigpPct", wAvgMIGPPct.toFixed(2));
                 oSCDetail.setProperty("/summaryRecPct", wAvgRECPct.toFixed(2));
+                // [NEW] Set weighted-average REC Price; blank string if no row has a REC Price
+                oSCDetail.setProperty("/summaryRecPrice", hasAnyRECPrice ? wAvgRECPrice.toFixed(2) : "");
+
                 if (oSummaryBox) { oSummaryBox.setVisible(true); }
+
             } else {
                 oSCDetail.setProperty("/summarySubFee", "");
                 oSCDetail.setProperty("/summarySubPct", "");
                 oSCDetail.setProperty("/summaryMigpPct", "");
                 oSCDetail.setProperty("/summaryRecPct", "");
+                oSCDetail.setProperty("/summaryRecPrice", "");   // [NEW]
                 if (oSummaryBox) { oSummaryBox.setVisible(false); }
             }
 
@@ -1553,7 +1623,7 @@ sap.ui.define([
                 "Calculations complete:\n\n" +
                 "Gross Annual Usage:       " + grossAnnualUsage.toFixed(2) + " MWh\n" +
                 "Size of Opportunity:      " + sizeOfOpp.toFixed(2) + " MWh\n" +
-                "Total Term:               " + totalTermYears.toFixed(2) + " years\n" +
+                "Total Term:               " + termDisplay + "\n" +
                 "Annual Subscribed Load:   " + annualSubscribedLoad.toFixed(2) + " MWh\n" +
                 "Opp Subscribed Load:      " + oppSubscribedLoad.toFixed(2) + " MWh\n" +
                 "Contract Lifetime Value:  $" + contractLifetimeValue.toFixed(2)

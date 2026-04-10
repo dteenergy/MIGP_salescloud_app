@@ -621,6 +621,8 @@
           </Table>
           <!-- Summary / Weighted Average bar — visible only when 2+ LCVP rows exist after Calculate -->
 <!-- Values written to oSCDetail by oncalc STEP 9; hidden on re-fetch or category change  -->
+<!-- Values written to oSCDetail by oncalc STEP 9; hidden on re-fetch or category change  -->
+<!-- Values written to oSCDetail by oncalc STEP 9; hidden on re-fetch or category change  -->
 <HBox id="idSummaryLineBox" visible="false"
       class="sapUiSmallMarginTop sapUiSmallMarginBegin sapUiSmallMarginBottom">
   <items>
@@ -650,15 +652,25 @@
                editable="false" width="8rem" />
       </items>
     </VBox>
-    <VBox id="_IDGenVBox5">
+    <VBox id="_IDGenVBox5" class="sapUiSmallMarginEnd">
       <items>
         <Label id="_IDGenLabel4" text="REC %" />
         <Input id="idSumRecPct"  value="{oSCDetail>/summaryRecPct}"
                editable="false" width="8rem" />
       </items>
     </VBox>
+    <!-- [NEW] Weighted-average REC Price — populated by oncalc STEP 9.
+         Blank ("") when no row in the contract has a REC Price (no-blend scenarios). -->
+    <VBox id="_IDGenVBox6">
+      <items>
+        <Label id="_IDGenLabel5" text="REC Price ($)" />
+        <Input id="idSumRecPrice" value="{oSCDetail>/summaryRecPrice}"
+               editable="false" width="9rem" />
+      </items>
+    </VBox>
   </items>
-</HBox>
+</HBox>    
+
           <content>
             <OverflowToolbar id="_IDGenOverflowToolbar2">
               <ToolbarSpacer id="_IDGenToolbarSpacer2"/>
