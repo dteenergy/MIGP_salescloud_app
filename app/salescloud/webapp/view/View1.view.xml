@@ -115,33 +115,52 @@
     </layoutData>
 </ComboBox>
             <!-- Change 1 — ADD Sales Phase after Status Input: -->
-<Label id="idlblsalesPhase" text="Sales Phase"/>
-    <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }"/> -->
-<ComboBox id="idsalesPhase"
-    selectedKey="{oSCDetail>/salesPhase}"
-    selectionChange="onSalesPhaseChange">
-    <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }">/ -->
-    <layoutData>
-        <l:GridData id="_IDGenGridData_salesphase" span="XL7 L7 M12 S12"/>
-    </layoutData>
-</ComboBox>
+              <Label id="idlblsalesPhase" text="Sales Phase"/>
+            <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }"/> -->
+              <ComboBox id="idsalesPhase"
+                        selectedKey="{oSCDetail>/salesPhase}"
+                         selectionChange="onSalesPhaseChange">
+           <!-- visible="{= ${oSCDetail>/isQuoteContext} === false }">/ -->
+              <layoutData>
+                <l:GridData id="_IDGenGridData_salesphase" span="XL7 L7 M12 S12"/>
+            </layoutData>
+              </ComboBox>
+
+            <!-- Row 7 R: Sales Type -->
+            <Label id="idlblEmerCnNme_CC" text="{i18n>salestyp}"/>
+            <ComboBox id="idMode_S" selectionChange="onComboBoxtype">
+                <core:Item id="_IDGenItem11" key="New"           text="New Sale"/>
+                <core:Item id="_IDGenItem12" key="Amendment"     text="Amendment"/>
+                <core:Item id="_IDGenItem13" key="Renewal"       text="Renewal"/>
+                <core:Item id="_IDGenItem14" key="One-time Sale" text="One-time Sale"/>
+                <layoutData><l:GridData id="_IDGenGridData17" span="XL7 L7 M12 S12"/></layoutData>
+            </ComboBox>
+
+            <!-- Row 3 R: Gross Annual Usage -->
+            <Label id="idlblusage" text="{i18n>grossusage}"/>
+            <Input id="idusage" value="{oSCDetail>/annualGross}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData13" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
             <!-- Row 3 L: Size of Opportunity -->
             <Label id="idlblsize" text="{i18n>sizeopp}"/>
             <Input id="idsize" value="{oSCDetail>/sizeofOpp}" editable="false">
               <layoutData><l:GridData id="_IDGenGridData3" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 4 L: Annual Subscribed Load -->
-            <Label id="idlblsubs" text="{i18n>anualsubs}"/>
-            <Input id="idsubs" value="{oSCDetail>/annualSubs}" editable="false">
-              <layoutData><l:GridData id="_IDGenGridData4" span="XL7 L7 M12 S12"/></layoutData>
+            <!-- Row 4 R: Estimated Subscription % -->
+            <Label id="idlblpusage" text="{i18n>subest}"/>
+            <Input id="idpusage" value="{oSCDetail>/percentUsage}" description="%">
+              <layoutData><l:GridData id="_IDGenGridData14" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 5 L: Contract Lifetime Value -->
-            <Label id="idlblcontract" text="{i18n>conlife}"/>
-            <Input id="idcontract" value="{oSCDetail>/contLifetimeval}" editable="false">
-              <layoutData><l:GridData id="_IDGenGridData5" span="XL7 L7 M12 S12"/></layoutData>
+            <!-- Row 2 R: Term (LCVP, hidden by default) -->
+            <Label id="idlterm" text="{i18n>term}" visible="false"/>
+            <Input id="idterm" value="{oSCDetail>/term}" editable="false" visible="false">
+              <layoutData><l:GridData id="_IDGenGridData12" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
+
+           
 
             <!-- Row 6 L: Price Structure -->
             <Label id="idlblEmerConNme_CC" text="{i18n>pricestr}"/>
@@ -157,28 +176,13 @@
               <layoutData><l:GridData id="_IDGenGridData7" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 8 L: Metered Consumption (LCVP only, hidden by default) -->
-            <Label id="idlblmtrcon" text="{i18n>mtrcon}" visible="false"/>
-            <Input id="idmtrcon" value="{oSCDetail>/meteredCon}" editable="false" visible="false">
-              <layoutData><l:GridData id="_IDGenGridData8" span="XL7 L7 M12 S12"/></layoutData>
-            </Input>
-
-            <!-- Row 9 L: Commencement Letter Sent (LCVP, Sales Admins) -->
-            <Label id="idlblcommLetterSent" text="Commencement Letter Sent" visible="false"/>
-            <CheckBox id="idcommLetterSent"
-                selected="{path: 'oSCDetail>/commencementLetterSent', type: 'sap.ui.model.type.Boolean'}"
-                visible="false"
-                tooltip="Indicator only — no downstream impact (FDD #11)">
-              <layoutData><l:GridData id="_IDGenGridData9" span="XL7 L7 M12 S12"/></layoutData>
+            <!-- Row 10 R: Include in Upcoming Pipeline -->
+            <Label id="idlblincludePipeline" text="Include in Upcoming Pipeline"/>
+            <CheckBox id="idincludePipeline"
+                selected="{path: 'oSCDetail>/includeInPipeline', type: 'sap.ui.model.type.Boolean'}"
+                tooltip="Reporting indicator for weekly pipeline meetings (FDD #18)">
+              <layoutData><l:GridData id="_IDGenGridData20" span="XL7 L7 M12 S12"/></layoutData>
             </CheckBox>
-
-            <!-- Row 10 L: Enrolled — free-text display, comma-separated values from CR&B -->
-            <!-- e.g. "MIGP-FIXED" | "MIGP-FLEX" | "LCVP" | "MIGP-FLEX,LCVP" (FDD #13) -->
-            <Label id="idlblenrolled" text="Enrolled"/>
-            <Input id="idenrolled" value="{oSCDetail>/enrolled}" editable="false"
-                tooltip="Values returned by CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP (comma-separated if multiple)">
-              <layoutData><l:GridData id="_IDGenGridData10" span="XL7 L7 M12 S12"/></layoutData>
-            </Input>
 
             <!-- ════════ RIGHT COLUMN ════════ -->
             <core:Title id="_IDGenTitle2_CC"/>
@@ -192,23 +196,28 @@
                 <layoutData><l:GridData id="_IDGenGridData11" span="XL7 L7 M12 S12"/></layoutData>
             </ComboBox>
 
-            <!-- Row 2 R: Term (LCVP, hidden by default) -->
-            <Label id="idlterm" text="{i18n>term}" visible="false"/>
-            <Input id="idterm" value="{oSCDetail>/term}" editable="false" visible="false">
-              <layoutData><l:GridData id="_IDGenGridData12" span="XL7 L7 M12 S12"/></layoutData>
+            
+             <!-- Row 4 L: Annual Subscribed Load -->
+            <Label id="idlblsubs" text="{i18n>anualsubs}"/>
+            <Input id="idsubs" value="{oSCDetail>/annualSubs}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData4" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 3 R: Gross Annual Usage -->
-            <Label id="idlblusage" text="{i18n>grossusage}"/>
-            <Input id="idusage" value="{oSCDetail>/annualGross}" editable="false">
-              <layoutData><l:GridData id="_IDGenGridData13" span="XL7 L7 M12 S12"/></layoutData>
+
+             <!-- Row 6 R: Opportunity Subscribed Load -->
+            <Label id="idlblfee" text="{i18n>oppsubs}"/>
+            <Input id="idfee" value="{oSCDetail>/oppSubs}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData16" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 4 R: Estimated Subscription % -->
-            <Label id="idlblpusage" text="{i18n>subest}"/>
-            <Input id="idpusage" value="{oSCDetail>/percentUsage}" description="%">
-              <layoutData><l:GridData id="_IDGenGridData14" span="XL7 L7 M12 S12"/></layoutData>
+            <!-- Row 5 L: Contract Lifetime Value -->
+            <Label id="idlblcontract" text="{i18n>conlife}"/>
+            <Input id="idcontract" value="{oSCDetail>/contLifetimeval}" editable="false">
+              <layoutData><l:GridData id="_IDGenGridData5" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
+            
+
+            
 
             <!-- Row 5 R: Annual MWh Size at Closure -->
             <!-- <Label id="idlblclosure" text="{i18n>annclosure}"/>
@@ -216,27 +225,28 @@
               <layoutData><l:GridData id="_IDGenGridData15" span="XL7 L7 M12 S12"/></layoutData>
             </Input> -->
 
-            <!-- Row 6 R: Opportunity Subscribed Load -->
-            <Label id="idlblfee" text="{i18n>oppsubs}"/>
-            <Input id="idfee" value="{oSCDetail>/oppSubs}" editable="false">
-              <layoutData><l:GridData id="_IDGenGridData16" span="XL7 L7 M12 S12"/></layoutData>
+           
+            <!-- Row 8 L: Metered Consumption (LCVP only, hidden by default) -->
+            <Label id="idlblmtrcon" text="{i18n>mtrcon}" visible="false"/>
+            <Input id="idmtrcon" value="{oSCDetail>/meteredCon}" editable="false" visible="false">
+              <layoutData><l:GridData id="_IDGenGridData8" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
-            <!-- Row 7 R: Sales Type -->
-            <Label id="idlblEmerCnNme_CC" text="{i18n>salestyp}"/>
-            <ComboBox id="idMode_S" selectionChange="onComboBoxtype">
-                <core:Item id="_IDGenItem11" key="New"           text="New Sale"/>
-                <core:Item id="_IDGenItem12" key="Amendment"     text="Amendment"/>
-                <core:Item id="_IDGenItem13" key="Renewal"       text="Renewal"/>
-                <core:Item id="_IDGenItem14" key="One-time Sale" text="One-time Sale"/>
-                <layoutData><l:GridData id="_IDGenGridData17" span="XL7 L7 M12 S12"/></layoutData>
-            </ComboBox>
-
-            <!-- Row 8 R: Unmetered Consumption (LCVP only, hidden by default) -->
+             <!-- Row 8 R: Unmetered Consumption (LCVP only, hidden by default) -->
             <Label id="idlblunmtrcon" text="{i18n>unmtrcon}" visible="false"/>
             <Input id="idunmtrcon" value="{oSCDetail>/unmeteredCon}" editable="false" visible="false">
               <layoutData><l:GridData id="_IDGenGridData18" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
+
+
+            <!-- Row 9 L: Commencement Letter Sent (LCVP, Sales Admins) -->
+            <Label id="idlblcommLetterSent" text="Commencement Letter Sent" visible="false"/>
+            <CheckBox id="idcommLetterSent"
+                selected="{path: 'oSCDetail>/commencementLetterSent', type: 'sap.ui.model.type.Boolean'}"
+                visible="false"
+                tooltip="Indicator only — no downstream impact (FDD #11)">
+              <layoutData><l:GridData id="_IDGenGridData9" span="XL7 L7 M12 S12"/></layoutData>
+            </CheckBox>
 
             <!-- Row 9 R: Commencement Letter Signed (LCVP, Sales Admins) -->
             <Label id="idlblcommLetterSigned" text="Commencement Letter Signed" visible="false"/>
@@ -247,13 +257,20 @@
               <layoutData><l:GridData id="_IDGenGridData19" span="XL7 L7 M12 S12"/></layoutData>
             </CheckBox>
 
-            <!-- Row 10 R: Include in Upcoming Pipeline -->
-            <Label id="idlblincludePipeline" text="Include in Upcoming Pipeline"/>
-            <CheckBox id="idincludePipeline"
-                selected="{path: 'oSCDetail>/includeInPipeline', type: 'sap.ui.model.type.Boolean'}"
-                tooltip="Reporting indicator for weekly pipeline meetings (FDD #18)">
-              <layoutData><l:GridData id="_IDGenGridData20" span="XL7 L7 M12 S12"/></layoutData>
-            </CheckBox>
+            <!-- Row 10 L: Enrolled — free-text display, comma-separated values from CR&B -->
+            <!-- e.g. "MIGP-FIXED" | "MIGP-FLEX" | "LCVP" | "MIGP-FLEX,LCVP" (FDD #13) -->
+            <Label id="idlblenrolled" text="Enrolled"/>
+            <Input id="idenrolled" value="{oSCDetail>/enrolled}" editable="false"
+                tooltip="Values returned by CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP (comma-separated if multiple)">
+              <layoutData><l:GridData id="_IDGenGridData10" span="XL7 L7 M12 S12"/></layoutData>
+            </Input>
+
+            
+
+           
+            
+
+            
             <!-- Last Fetch timestamp — read-only header field -->
 <Label id="idlblLastFetch" text="Last Fetched"/>
 <Input id="idLastFetch"
@@ -305,7 +322,7 @@
             tooltip="Sort and Filter Involved Parties"
             press="onSortFilterIP"/>
   </OverflowToolbar>
-          <Table id="table" items="{oOpportunityjmodel>/InvolvedParties}">
+          <Table id="table" fixedLayout="false" items="{oOpportunityjmodel>/InvolvedParties}">
             <columns>
               <Column id="_IDGenColumn"><Text id="_IDGenText" text="{i18n>buspartner}"/></Column>
               <Column id="_IDGenColumn1"><Text id="_IDGenText2" text="{i18n>role}"/></Column>
@@ -344,7 +361,7 @@
     <Button id="IDverify" text="Fetch/Validate CA" press="onfetchCA" type="Ghost"/>
   </OverflowToolbar>
 
-  <Table id="tableISUCA" growingThreshold="50" alternateRowColors="true"
+  <Table id="tableISUCA" fixedLayout="false" growingThreshold="50" alternateRowColors="true"
          items="{oOpportunityjmodel>/ConsumptionDetails}">
     <columns>
       <Column id="_IDGenColumn2">
@@ -441,11 +458,11 @@
           </OverflowToolbar>
 
           <!-- SMB table -->
-          <Table id="tablesmall" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
+          <Table id="tablesmall" fixedLayout="false" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
             <columns>
               <Column id="_IDGenColumn22"><Text id="_IDGenText45" text="Product"/></Column>
               <Column id="_IDGenColumn23"><Text id="_IDGenText46" text="Portfolio"/></Column>
-              <Column id="_IDGenColumn24"><Text id="_IDGenText47" text="Fixed price"/></Column>
+              <Column id="_IDGenColumn24"><Text id="_IDGenText47" text="Fixed $"/></Column>
               <Column id="_IDGenColumn25"><Text id="_IDGenText48" text="Subscription Fee ($/MWh)"/></Column>
               <Column id="_IDGenColumn26"><Text id="_IDGenText49" text="Subscription %"/></Column>
               <Column id="_IDGenColumn27"><Text id="_IDGenText50" text="Start Date"/></Column>
@@ -518,7 +535,7 @@
           </Table>
 
           <!-- LCVP table -->
-          <Table id="tablelarge" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
+          <Table id="tablelarge" fixedLayout="false" visible="false" items="{oOpportunityjmodel>/ProviderContracts}">
             <columns>
               <Column id="_IDGenColumn32"><Text id="_IDGenText55" text="Product"/></Column>
               <Column id="_IDGenColumn33"><Text id="_IDGenText56" text="Portfolio"/></Column>
@@ -529,7 +546,7 @@
               <Column id="_IDGenColumn37"><Text id="_IDGenText60" text="Start Date"/></Column>
               <Column id="_IDGenColumn38"><Text id="_IDGenText61" text="End Date"/></Column>
               <Column id="_IDGenColumn39"><Text id="_IDGenText62" text="Est. Usage (MWh)"/></Column>
-              <Column id="_IDGenColumn40"><Text id="_IDGenText63" text="REC Price"/></Column>
+              <Column id="_IDGenColumn40"><Text id="_IDGenText63" text="REC Price ($)"/></Column>
               <Column id="_IDGenColumn41"><Text id="_IDGenText64" text="MIGP (%)"/></Column>
               <Column id="_IDGenColumn42"><Text id="_IDGenText65" text="REC (%)"/></Column>
               <Column id="_IDGenColumn43"><Text id="_IDGenText66" text="MIGP MWh"/></Column>
@@ -670,7 +687,7 @@
                     tooltip="Add a Dummy CA with projected consumption (FDD Req#36)"/>
           </OverflowToolbar>
 
-          <Table id="table11" items="{oOpportunityjmodel>/Prospects}">
+          <Table id="table11" fixedLayout="false" items="{oOpportunityjmodel>/Prospects}">
             <columns>
               <Column id="_IDGenColumn47"><Text id="_IDGenText70" text="Site Address (General Location)"/></Column>
               <Column id="_IDGenColumn48"><Text id="_IDGenText71" text="Projected Consumption"/></Column>

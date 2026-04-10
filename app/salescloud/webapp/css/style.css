@@ -12,3 +12,28 @@
 .noGreyCombo .sapMInputBaseInner {
     color: #000 !important;
 }
+
+/* Horizontal scroll */
+.sapMITBContainerContent {
+    overflow-x: auto !important;
+}
+
+/* Table min width */
+[id*="View1--tablesmall"],
+[id*="View1--tablelarge"],
+[id*="View1--tableISUCA"],
+[id*="View1--table"],
+[id*="View1--table11"]  {
+    min-width: max-content;
+}
+
+/* Input field fixed width */
+[id*="View1--tablesmall"] .sapMInputBase,
+[id*="View1--tablelarge"] .sapMInputBase,
+[id*="View1--tableISUCA"] .sapMInputBase,
+[id*="View1--table"] .sapMInputBase,
+[id*="View1--table11"] .sapMInputBase {
+    /* width: 7rem !important; */
+    width: auto !important;
+    min-width: fit-content !important;
+}
