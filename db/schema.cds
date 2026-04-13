@@ -50,6 +50,7 @@ entity ProviderContract : cuid, managed {
   exportDate     : String; // BTP suggestion #4 — auto-stamped when Export File is clicked
   opportunity    : Association to Opportunity;
   exportChk      : String;
+  netPremium     : String; // SMB Fixed $ — Net Premium $/MWh (used for Annual Subscribed Load calc)
 }
 
 entity Prospect : cuid, managed {

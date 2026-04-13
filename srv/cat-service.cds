@@ -25,6 +25,7 @@ type ProviderContractinput {
   enrollChk      : String;   
   exportDate     : String; 
   exportChk : String;
+  netPremium     : String; // SMB Fixed $ — Net Premium $/MWh
 }
 
 type ConsumptionDetailinput {

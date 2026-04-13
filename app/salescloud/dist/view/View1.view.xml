@@ -463,6 +463,7 @@
               <Column id="_IDGenColumn22"><Text id="_IDGenText45" text="Product"/></Column>
               <Column id="_IDGenColumn23"><Text id="_IDGenText46" text="Portfolio"/></Column>
               <Column id="_IDGenColumn24"><Text id="_IDGenText47" text="Fixed $"/></Column>
+              <Column id="colNetPremium"><Text id="_IDGenText74" text="Net Premium $/MWh"/></Column>
               <Column id="_IDGenColumn25"><Text id="_IDGenText48" text="Subscription Fee ($/MWh)"/></Column>
               <Column id="_IDGenColumn26"><Text id="_IDGenText49" text="Subscription %"/></Column>
               <Column id="_IDGenColumn27"><Text id="_IDGenText50" text="Start Date"/></Column>
@@ -491,6 +492,10 @@
                          change="onFixedOrFlexChange"
                          placeholder="Fixed $"
                          tooltip="Enter Fixed Price OR Subscription Fee — not both (BTP #6)"/>
+                  <Input id="idInputNetPremium" 
+                         value="{oOpportunityjmodel>netPremium}"
+                         type="Number"
+                          placeholder="e.g. 15.20"/>
                   <Input id="_IDGenInput3" value="{oOpportunityjmodel>portfolioprice}"
                          change="onFixedOrFlexChange"
                          placeholder="Flex $/MWh"

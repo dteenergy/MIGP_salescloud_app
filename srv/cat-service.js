@@ -130,6 +130,7 @@ module.exports = (srv) => {
           enrollmentEmailId: opp.enrollmentEmailId || '',             // ← add
           lastFetchedAt: opp.lastFetchedAt || null,                   // ← timestamp
 
+
           // ── Child tables — map every field explicitly so nothing is lost ──
           involvedParties: involvedParties.map(r => ({
             buspartner: r.buspartner || '',
@@ -154,6 +155,7 @@ module.exports = (srv) => {
             enrollChk: r.enrollChk === true || r.enrollChk === 'true',  // ✅ boolean
             exportDate: r.exportDate || '',
             exportChk: r.exportChk === true || r.exportChk === 'true',  // ✅ boolean
+            netPremium: r.netPremium || '',   // ← ADD
           })),
 
           consumptionDetails: consumptionDetails.map(r => ({
@@ -374,6 +376,7 @@ module.exports = (srv) => {
           enrollChk: asStr(r.enrollChk),   // ✅ ADD
           exportDate: asStr(r.exportDate),  // ✅ ADD
           exportChk: asStr(r.exportChk),   // ✅ ADD
+          netPremium: asStr(r.netPremium),   // ← ADD
           opportunity_ID: oppID
         }));
 
@@ -567,6 +570,7 @@ module.exports = (srv) => {
             enrollChk: r.enrollChk === true || r.enrollChk === 'true',
             exportDate: r.exportDate || '',  // ✅ ADD
             exportChk: r.exportChk === true || r.exportChk === 'true',
+            netPremium: r.netPremium || '',   // ← ADD
           })),
 
           consumptionDetails: cdDetail.map(r => ({
@@ -755,7 +759,8 @@ module.exports = (srv) => {
               migpMWh: r.migpMWh || '', recMWh: r.recMWh || '',
               enrollChk: r.enrollChk === true || r.enrollChk === 'true',
               exportDate: r.exportDate || '',
-              exportChk: r.exportChk === true || r.exportChk === 'true'
+              exportChk: r.exportChk === true || r.exportChk === 'true',
+              netPremium: r.netPremium || ''   // ← ADD
             })),
             consumptionDetails: cd.map(r => ({
               contacc: r.contacc || '', buspartner: r.buspartner || '',
@@ -901,7 +906,8 @@ module.exports = (srv) => {
             migpMWh: r.migpMWh || '', recMWh: r.recMWh || '',
             enrollChk: r.enrollChk === true || r.enrollChk === 'true',
             exportDate: r.exportDate || '',
-            exportChk: r.exportChk === true || r.exportChk === 'true'
+            exportChk: r.exportChk === true || r.exportChk === 'true',
+            netPremium: r.netPremium || ''   // ← ADD
           })),
           consumptionDetails: cd.map(r => ({
             contacc: r.contacc || '', buspartner: r.buspartner || '',
@@ -1080,7 +1086,8 @@ module.exports = (srv) => {
               migpMWh: r.migpMWh || '', recMWh: r.recMWh || '',
               enrollChk: r.enrollChk === true || r.enrollChk === 'true',
               exportChk: r.exportChk === true || r.exportChk === 'true',
-              exportDate: r.exportDate || ''
+              exportDate: r.exportDate || '',
+              netPremium: r.netPremium || ''  // ← ADD
             })),
             consumptionDetails: cd.map(r => ({
               contacc: r.contacc || '', buspartner: r.buspartner || '',
@@ -1223,7 +1230,8 @@ module.exports = (srv) => {
             migpMWh: r.migpMWh || '', recMWh: r.recMWh || '',
             enrollChk: r.enrollChk === true || r.enrollChk === 'true',
             exportChk: r.exportChk === true || r.exportChk === 'true',
-            exportDate: r.exportDate || ''
+            exportDate: r.exportDate || '',
+            netPremium: r.netPremium || ''   // ← ADD
           })),
           consumptionDetails: cd.map(r => ({
             contacc: r.contacc || '', buspartner: r.buspartner || '',
@@ -2012,6 +2020,7 @@ module.exports = (srv) => {
                   migpMWh: snap.migpMWh ?? r.migpMWh ?? null,
                   recMWh: snap.recMWh ?? r.recMWh ?? null,
                   estUsage: snap.estUsage ?? r.estUsage ?? null,
+                  netPremium: snap.netPremium ?? r.netPremium ?? null,   // ← ADD
                   opportunity_ID: existingQuote.ID
                 };
               });
@@ -2034,6 +2043,7 @@ module.exports = (srv) => {
                 enrollChk: x?.enrollChk ?? null,
                 exportDate: null,   // new rows have no prior BTP values
                 exportChk: null,    // ← restore QUOTE's own value
+                netPremium: x?.netPremium ?? null, // my add
                 opportunity_ID: existingQuote.ID
               }));
 
@@ -2132,6 +2142,7 @@ module.exports = (srv) => {
                 enrollChk: r.enrollChk ?? null,
                 exportDate: r.exportDate ?? null,
                 exportChk: r.exportChk ?? null,
+                netPremium: r.netPremium ?? null,
                 opportunity_ID: newQuoteID
               }));
             }
@@ -2255,6 +2266,7 @@ module.exports = (srv) => {
               migpMWh: snap.migpMWh ?? null,
               recMWh: snap.recMWh ?? null,
               estUsage: snap.estUsage ?? null,
+              netPremium: snap.netPremium ?? null, 
               opportunity_ID: oppID
             };
           });

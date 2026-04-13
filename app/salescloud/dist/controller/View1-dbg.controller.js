@@ -1134,10 +1134,11 @@ sap.ui.define([
                 var y1 = dStart.getFullYear(), m1 = dStart.getMonth(), d1 = dStart.getDate();
                 var y2 = dEnd.getFullYear(), m2 = dEnd.getMonth(), d2 = dEnd.getDate();
                 var months = (y2 - y1) * 12 + (m2 - m1);
-                // If end day >= start day, the partial month is a full month
-                // e.g. Jan 1 → Dec 31: (Dec month - Jan month) = 11, but d2(31) >= d1(1) → +1 = 12 ✓
-                // e.g. Jan 1 → Jan 31: months=0, d2(31)>=d1(1) → +1 = 1 ✓ (Sc8)
-                if (d2 >= d1) months += 1;
+                // +1 only when end day is STRICTLY greater than start day
+                // (inclusive end convention: Jan 1 → Dec 31 = 12 months)
+                // When days are equal it's an exact month/year boundary — no +1 needed
+                // e.g. Jan 1 2027 → Jan 1 2030 = exactly 36 months (3 yrs), not 37
+                if (d2 > d1) months += 1;
                 return months > 0 ? months : 0;
             }
 
@@ -1164,6 +1165,7 @@ sap.ui.define([
             // ── STEP 3: Size of Opportunity ──────────────────────────────────────────
             var sizeOfOpp = grossAnnualUsage * (subPercent / 100);
             oSCDetail.setProperty("/sizeofOpp", sizeOfOpp.toFixed(2));
+
 
             // ── STEP 4: Metered / Unmetered totals ───────────────────────────────────
             var meteredTotal = 0, unmeteredTotal = 0;
@@ -1210,9 +1212,28 @@ sap.ui.define([
                             return;
                         }
                     }
+                    // if (!smbHasFixedPrice && !smbHasSubFee && !smbHasSubPct) {
+                    //     MessageBox.error("Row " + (si + 1) +
+                    //         ": Either Fixed Price or Subscription Fee / Percentage is required.");
+                    //     return;
+                    // }
+                    // Fixed Dollar scenario requires both fixedPrice AND netPremium
+                    var smbNetPremium = parseFloat(oSMBRow.netPremium) || 0;
+                    var bFixedDollarRow = (smbHasFixedPrice && smbNetPremium > 0);
+
+                    if (smbHasFixedPrice && smbNetPremium <= 0) {
+                        MessageBox.error("Row " + (si + 1) +
+                            ": Fixed Price enrollment requires a Net Premium $/MWh value.");
+                        return;
+                    }
+                    if (bFixedDollarRow && !smbHasSubFee) {
+                        MessageBox.error("Row " + (si + 1) +
+                            ": Fixed Price enrollment requires a Subscription Fee $/MWh for CLV calculation.");
+                        return;
+                    }
                     if (!smbHasFixedPrice && !smbHasSubFee && !smbHasSubPct) {
                         MessageBox.error("Row " + (si + 1) +
-                            ": Either Fixed Price or Subscription Fee / Percentage is required.");
+                            ": Either Fixed Price (with Net Premium + Subscription Fee) or Subscription Fee / Percentage is required.");
                         return;
                     }
                     if (!oSMBRow.startDate) {
@@ -1222,15 +1243,10 @@ sap.ui.define([
                 }
 
                 // Annual Subscribed Load = selected CAs usage × Sub%
-                var annualSubsSMB = 0;
-                aCARows.forEach(function (oCA) {
-                    if (oCA.selected === true || oCA.selected === "true") {
-                        annualSubsSMB += (parseFloat(oCA.est12month) || 0) * (subPercent / 100);
-                    }
-                });
-                oSCDetail.setProperty("/annualSubs", annualSubsSMB.toFixed(2));
-
+                // Annual Subscribed Load — computed per-row below (Fixed $ uses netPremium formula;
+                // Flex uses CA-usage × Sub%). We derive the header value after the row loop.
                 var aSMBRows = oTabModel.getProperty("/ProviderContracts") || [];
+                var smb_annualSubs = 0;  // accumulated in row loop
                 var smb_oppSubs = 0;
                 var smb_clv = 0;
 
@@ -1257,18 +1273,39 @@ sap.ui.define([
                         if (!isNaN(dStart) && (!smbEarliestStart || dStart < smbEarliestStart)) smbEarliestStart = dStart;
                         if (!isNaN(dEnd) && (!smbLatestEnd || dEnd > smbLatestEnd)) smbLatestEnd = dEnd;
 
+                        // ── SMB: detect Fixed Dollar scenario ─────────────────────────
+                        // Fixed Dollar = fixedPrice > 0 AND netPremium > 0
+                        // (fixedMWh is the LCVP Fixed-MWh concept; fixedPrice is the SMB $ amount)
+                        var netPremium = parseFloat(oRow.netPremium) || 0;
+                        var bFixedDollar = (fixedPrc > 0 && netPremium > 0);
+
                         // estUsage per row
                         var rowEstUsage = 0;
-                        if (fixedMWhV > 0) {
+                        if (bFixedDollar) {
+                            // [SMB-FIXED-$] Annual Subscribed Load = (1 / netPremium) * fixedPrice * 12
+                            // estUsage here represents the Annual Subscribed Load for this row
+                            rowEstUsage = (1 / netPremium) * fixedPrc * 12;
+                        } else if (fixedMWhV > 0) {
                             rowEstUsage = fixedMWhV;
                         } else if (subPct > 0) {
                             rowEstUsage = selectedCAsTotal * (subPct / 100);
                         } else if (fixedPrc > 0) {
+                            // fixedPrice with no netPremium — treat as flat fixed price (original logic)
                             rowEstUsage = selectedCAsTotal * (subPercent / 100);
                         }
                         oRow.estUsage = rowEstUsage > 0 ? rowEstUsage.toFixed(2) : "";
+                        smb_annualSubs += rowEstUsage; // annual load contribution from this row
 
-                        if (subFee > 0) {
+
+                        if (bFixedDollar) {
+                            // [SMB-FIXED-$]
+                            // Annual Subscribed Load = rowEstUsage (already computed above)
+                            // Opp Subscribed Load   = annualSubsLoad × term
+                            // CLV                   = oppSubs × subFee
+                            var rowOppSubs = rowEstUsage * rowTermYears;
+                            smb_oppSubs += rowOppSubs;
+                            smb_clv += rowOppSubs * subFee;
+                        } else if (subFee > 0) {
                             smb_oppSubs += rowEstUsage * rowTermYears;
                             smb_clv += subFee * rowEstUsage * rowTermYears;
                         } else if (fixedPrc > 0) {
@@ -1288,6 +1325,7 @@ sap.ui.define([
                     (smbDisplayMonths > 0 ? " " + smbDisplayMonths + " month" + (smbDisplayMonths !== 1 ? "s" : "") : "");
                 oSCDetail.setProperty("/term", smbTermDisplay);
 
+                oSCDetail.setProperty("/annualSubs", smb_annualSubs.toFixed(2));
                 oSCDetail.setProperty("/oppSubs", smb_oppSubs.toFixed(2));
                 oSCDetail.setProperty("/contLifetimeval", smb_clv.toFixed(2));
 
@@ -1296,7 +1334,7 @@ sap.ui.define([
                     "Gross Annual Usage:        " + grossAnnualUsage.toFixed(2) + " MWh\n" +
                     "Size of Opportunity:       " + sizeOfOpp.toFixed(2) + " MWh\n" +
                     "Total Term:               " + smbTermDisplay + "\n" +
-                    "Annual Subscribed Load:    " + annualSubsSMB.toFixed(2) + " MWh\n" +
+                    "Annual Subscribed Load:    " + smb_annualSubs.toFixed(2) + " MWh\n" +
                     "Opp Subscribed Load:       " + smb_oppSubs.toFixed(2) + " MWh\n" +
                     "Contract Lifetime Value:   $" + smb_clv.toFixed(2)
                 );
@@ -3255,6 +3293,7 @@ sap.ui.define([
                         portfolio: s(r.portfolio),
                         fixedMWh: s(r.fixedMWh),
                         fixedPrice: s(r.fixedPrice),
+                        netPremium: s(r.netPremium),  
                         portfolioprice: s(r.portfolioprice),
                         subspercent: s(r.subspercent),
                         startDate: s(iso(r.startDate)),
