@@ -177,12 +177,12 @@
             </Input>
 
             <!-- Row 10 R: Include in Upcoming Pipeline -->
-            <Label id="idlblincludePipeline" text="Include in Upcoming Pipeline"/>
+            <!-- <Label id="idlblincludePipeline" text="Include in Upcoming Pipeline"/>
             <CheckBox id="idincludePipeline"
                 selected="{path: 'oSCDetail>/includeInPipeline', type: 'sap.ui.model.type.Boolean'}"
                 tooltip="Reporting indicator for weekly pipeline meetings (FDD #18)">
               <layoutData><l:GridData id="_IDGenGridData20" span="XL7 L7 M12 S12"/></layoutData>
-            </CheckBox>
+            </CheckBox> -->
 
             <!-- ════════ RIGHT COLUMN ════════ -->
             <core:Title id="_IDGenTitle2_CC"/>
@@ -244,6 +244,7 @@
             <CheckBox id="idcommLetterSent"
                 selected="{path: 'oSCDetail>/commencementLetterSent', type: 'sap.ui.model.type.Boolean'}"
                 visible="false"
+                enabled="false"
                 tooltip="Indicator only — no downstream impact (FDD #11)">
               <layoutData><l:GridData id="_IDGenGridData9" span="XL7 L7 M12 S12"/></layoutData>
             </CheckBox>
@@ -253,17 +254,18 @@
             <CheckBox id="idcommLetterSigned"
                 selected="{path: 'oSCDetail>/commencementLetterSigned', type: 'sap.ui.model.type.Boolean'}"
                 visible="false"
+                enabled="false"
                 tooltip="Indicator only — no downstream impact (FDD #12)">
               <layoutData><l:GridData id="_IDGenGridData19" span="XL7 L7 M12 S12"/></layoutData>
             </CheckBox>
 
             <!-- Row 10 L: Enrolled — free-text display, comma-separated values from CR&B -->
             <!-- e.g. "MIGP-FIXED" | "MIGP-FLEX" | "LCVP" | "MIGP-FLEX,LCVP" (FDD #13) -->
-            <Label id="idlblenrolled" text="Enrolled"/>
+            <!-- <Label id="idlblenrolled" text="Enrolled"/>
             <Input id="idenrolled" value="{oSCDetail>/enrolled}" editable="false"
                 tooltip="Values returned by CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP (comma-separated if multiple)">
               <layoutData><l:GridData id="_IDGenGridData10" span="XL7 L7 M12 S12"/></layoutData>
-            </Input>
+            </Input> -->
 
             
 
@@ -383,13 +385,13 @@
       <Column id="_IDGenColumn8"><Text id="_IDGenText12" text="2-NSF"/></Column>
       <Column id="_IDGenColumn9"><Text id="_IDGenText13" text="{i18n>replCA}"/></Column>
       <Column id="_IDGenColumn10"><Text id="_IDGenText14" text="Inactive"/></Column>
-      <Column id="_IDGenColumn11"><Text id="_IDGenText15" text="{i18n>c20}"/></Column>
-      <Column id="_IDGenColumn12"><Text id="_IDGenText16" text="{i18n>pcid}"/></Column>
+      <!-- <Column id="_IDGenColumn11"><Text id="_IDGenText15" text="{i18n>c20}"/></Column> -->
+      <!-- <Column id="_IDGenColumn12"><Text id="_IDGenText16" text="{i18n>pcid}"/></Column> -->
       <Column id="_IDGenColumn13">
         <Text id="_IDGenText17" text="Enrolled"
               tooltip="Values from CR&amp;B e.g. MIGP-FIXED, MIGP-FLEX, LCVP"/>
       </Column>
-      <Column id="_IDGenColumn14"><Text id="_IDGenText18" text="{i18n>val}"/></Column>
+      <!-- <Column id="_IDGenColumn14"><Text id="_IDGenText18" text="{i18n>val}"/></Column> -->
     </columns>
     <items>
       <ColumnListItem id="_IDGenColumnListItem1">
@@ -405,10 +407,10 @@
           <Text id="_IDGenText24" text="{oOpportunityjmodel>nsfFlag}"/>
           <Text id="_IDGenText25" text="{oOpportunityjmodel>replacementCA}"/>
           <Text id="_IDGenText26" text="{oOpportunityjmodel>inactive}"/>
-          <Text id="_IDGenText27" text="{oOpportunityjmodel>cycle20}"/>
-          <Text id="_IDGenText28" text="{oOpportunityjmodel>providercontractId}"/>
+          <!-- <Text id="_IDGenText27" text="{oOpportunityjmodel>cycle20}"/> -->
+          <!-- <Text id="_IDGenText28" text="{oOpportunityjmodel>providercontractId}"/> -->
           <Text id="_IDGenText29" text="{oOpportunityjmodel>enrolled}"/>
-          <Text id="_IDGenText30" text="{oOpportunityjmodel>validity}"/>
+          <!-- <Text id="_IDGenText30" text="{oOpportunityjmodel>validity}"/> -->
         </cells>
       </ColumnListItem>
     </items>
@@ -470,7 +472,7 @@
               <Column id="_IDGenColumn28"><Text id="_IDGenText51" text="End Date"/></Column>
               <Column id="_IDGenColumn29"><Text id="_IDGenText52" text="Est. Usage (MWh)"/></Column>
               <!-- BTP suggestion #4 -->
-              <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column>
+              <!-- <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column> -->
               <!-- <Column id="_IDGenColumn30b"><Text id="_IDGenText5" text="Export"/></Column> -->
               <Column id="_IDGenColumn30b">
     <HBox id="_IDGenHBox1" alignItems="Center">
@@ -478,7 +480,7 @@
                   selected="false"
                   select="onSelectAllExportSMB"
                   tooltip="Select / Deselect all rows for Export"/>
-        <Text id="_IDGenText5" text="Export"/>
+        <Text id="_IDGenText5" text="Enroll"/>
     </HBox>
 </Column>
               <Column id="_IDGenColumn31"><Text id="_IDGenText54" text="Export Date"/></Column>
@@ -529,7 +531,7 @@
                   <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="false" />
                   <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/>
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
-                  <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/>
+                  <!-- <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/> -->
                   <CheckBox id="_IDGenCheckBox1b"
     selected="{oOpportunityjmodel>exportChk}"/>
                   <Input id="_IDGenInput8" value="{oOpportunityjmodel>exportDate}" editable="false"
@@ -545,7 +547,7 @@
               <Column id="_IDGenColumn32"><Text id="_IDGenText55" text="Product"/></Column>
               <Column id="_IDGenColumn33"><Text id="_IDGenText56" text="Portfolio"/></Column>
               <!-- BTP #6: Fixed MWh XOR Subscription Fee — not both in same row -->
-              <Column id="_IDGenColumn34"><Text id="_IDGenText57" text="Fixed MWh" tooltip="LCVP Fixed MWh (One-time Sale). Enter this OR Subscription Fee, not both."/></Column>
+              <!-- <Column id="_IDGenColumn34"><Text id="_IDGenText57" text="Fixed MWh" tooltip="LCVP Fixed MWh (One-time Sale). Enter this OR Subscription Fee, not both."/></Column> -->
               <Column id="_IDGenColumn35"><Text id="_IDGenText58" text="Subscription Fee ($/MWh)" tooltip="Flex subscription fee. Enter this OR Fixed MWh, not both."/></Column>
               <Column id="_IDGenColumn36"><Text id="_IDGenText59" text="Subscription %"/></Column>
               <Column id="_IDGenColumn37"><Text id="_IDGenText60" text="Start Date"/></Column>
@@ -557,7 +559,7 @@
               <Column id="_IDGenColumn43"><Text id="_IDGenText66" text="MIGP MWh"/></Column>
               <Column id="_IDGenColumn44"><Text id="_IDGenText67" text="REC MWh"/></Column>
               <!-- BTP suggestion #4 -->
-              <Column id="_IDGenColumn45"><Text id="_IDGenText68" text="Enroll"/></Column>
+              <!-- <Column id="_IDGenColumn45"><Text id="_IDGenText68" text="Enroll"/></Column> -->
               <!-- <Column id="_IDGenColumn45b"><Text id="_IDGenText73" text="Export"/></Column>    -->
               <Column id="_IDGenColumn45b">
     <HBox id="_IDGenHBox2" alignItems="Center">
@@ -565,7 +567,7 @@
                   selected="false"
                   select="onSelectAllExportLCVP"
                   tooltip="Select / Deselect all rows for Export"/>
-        <Text id="_IDGenText73" text="Export"/>
+        <Text id="_IDGenText73" text="Enroll"/>
     </HBox>
 </Column>
               <Column id="_IDGenColumn46"><Text id="_IDGenText69" text="Export Date"/></Column>
@@ -575,9 +577,9 @@
                 <cells>
                   <Input id="_IDGenInput9" value="{oOpportunityjmodel>product}"/>
                   <Input id="_IDGenInput10" value="{oOpportunityjmodel>portfolio}"/>
-                  <Input id="_IDGenInput11" value="{oOpportunityjmodel>fixedMWh}"
+                  <!-- <Input id="_IDGenInput11" value="{oOpportunityjmodel>fixedMWh}"
                          placeholder="Fixed MWh"
-                         tooltip="Enter Fixed MWh OR Subscription Fee — not both (BTP #6)"/>
+                         tooltip="Enter Fixed MWh OR Subscription Fee — not both (BTP #6)"/> -->
                   <Input id="_IDGenInput12" value="{oOpportunityjmodel>portfolioprice}"
                          placeholder="Flex $/MWh"
                          tooltip="Enter Subscription Fee OR Fixed MWh — not both (BTP #6)"/>
@@ -615,7 +617,7 @@
                   <Input id="_IDGenInput20" value="{oOpportunityjmodel>migpMWh}"     editable="false"/>
                   <Input id="_IDGenInput21" value="{oOpportunityjmodel>recMWh}"      editable="false"/>
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
-                  <CheckBox id="_IDGenCheckBox2" selected="{oOpportunityjmodel>enrollChk}"/>
+                  <!-- <CheckBox id="_IDGenCheckBox2" selected="{oOpportunityjmodel>enrollChk}"/> -->
                   <CheckBox id="_IDGenCheckBox2b"
     selected="{oOpportunityjmodel>exportChk}"/>  
                   <Input id="_IDGenInput22" value="{oOpportunityjmodel>exportDate}"  editable="false"
@@ -679,10 +681,11 @@
           <content>
             <OverflowToolbar id="_IDGenOverflowToolbar2">
               <ToolbarSpacer id="_IDGenToolbarSpacer2"/>
-              <!-- FDD Export spec: available for both SMB & LCVP, disabled for One-time Sale (FDD #51) -->
+              <!-- FDD Export spec:  visible="{= ${oSCDetail>/isQuoteContext} === true }" available for both SMB & LCVP, disabled for One-time Sale (FDD #51) -->
               <Button id="idbtnExport" text="Export File" type="Emphasized" icon="sap-icon://download"
                       press="onExportFile"
-                      visible="{= ${oSCDetail>/isQuoteContext} === true }"
+                      visible="false"
+                       enabled="false"
                       tooltip="Export Provider Contract details for selected CAs to Excel. Disabled for One-time Sale."/>
             </OverflowToolbar>
           </content>

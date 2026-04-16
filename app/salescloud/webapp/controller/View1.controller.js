@@ -95,46 +95,143 @@ sap.ui.define([
         },
 
         //UserRoles
+        // getUserDetails: async function () {
+        //     let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
+        //     oUserScopeJModel.setData("");
+
+        //     let omodel = this.getOwnerComponent().getModel();
+
+        //     // ── Shared handler: applies user result to model + sets UI state ──
+        //     var fnApplyUserResult = function (oOperation) {
+        //         let oResults = oOperation.getBoundContext().getObject();
+        //         if (!oResults) { return; }
+
+        //         oUserScopeJModel.setData(oResults);
+
+        //         if (oUserScopeJModel.oData.hasAdminAccess) {
+        //             this.getView().byId("idcommLetterSent").setEnabled(true);
+        //             this.getView().byId("idcommLetterSigned").setEnabled(true);
+        //             this.getView().byId("idbtnExport").setVisible(
+        //                 this.getView().getModel("oSCDetail").getProperty("/isQuoteContext")
+        //             );
+        //         } else if (oUserScopeJModel.oData.hasUserAccess) {
+        //             this.getView().byId("idcommLetterSent").setEnabled(false);
+        //             this.getView().byId("idcommLetterSigned").setEnabled(false);
+        //             this.getView().byId("idbtnExport").setVisible(false);
+        //         }
+        //     }.bind(this);
+
+        //     let oOperation = omodel.bindContext("/userDetails(...)");
+        //     try {
+        //         await oOperation.execute().then(function () {
+        //             fnApplyUserResult(oOperation);
+        //         }.bind(this), function (err) {
+        //             sap.m.MessageBox.error(err.message + "\n Roles not found! Contact support admin!");
+        //             console.error(err.message);
+        //         }.bind(this));
+
+        //     } catch (oError) {
+        //         // BUG 17908: Transient 401/role errors on BTP — retry once after a short delay
+        //         var sErrMsg = (oError && oError.message) ? oError.message : String(oError);
+        //         if (sErrMsg.indexOf("401") !== -1 || sErrMsg.indexOf("403") !== -1 ||
+        //             sErrMsg.indexOf("No role") !== -1 || sErrMsg.indexOf("not trusted") !== -1) {
+        //             console.warn("userDetails: transient auth error — retrying in 2s:", sErrMsg);
+        //             setTimeout(async function () {
+        //                 try {
+        //                     var oRetryOp = omodel.bindContext("/userDetails(...)");
+        //                     await oRetryOp.execute();
+        //                     fnApplyUserResult(oRetryOp);  // ← apply result from retry
+        //                     console.log("userDetails: retry succeeded.");
+        //                 } catch (oRetryErr) {
+        //                     console.error("userDetails retry also failed:", oRetryErr.message);
+        //                     sap.m.MessageBox.error(
+        //                         "Unable to verify your role. Please refresh the page.\n\n" +
+        //                         "If this persists, contact your administrator to confirm your role assignment in BTP.",
+        //                         { title: "Authorization Error" }
+        //                     );
+        //                 }
+        //             }.bind(this), 2000);
+        //             return;
+        //         }
+        //         console.error("userDetails error:", oError);
+        //     }
+        // },
+
         getUserDetails: async function () {
             let oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
-            oUserScopeJModel.setData("");
+            oUserScopeJModel.setData({});  // Fix: clear with empty object, not ""
 
             let omodel = this.getOwnerComponent().getModel();
+
+            var fnApplyUserResult = function (oOperation) {
+                // Default-deny: hide all three controls before inspecting result
+                this.getView().byId("idcommLetterSent").setVisible(false);
+                this.getView().byId("idcommLetterSent").setEnabled(false);
+                this.getView().byId("idcommLetterSigned").setVisible(false);
+                this.getView().byId("idcommLetterSigned").setEnabled(false);
+                this.getView().byId("idbtnExport").setVisible(false);
+                this.getView().byId("idbtnExport").setEnabled(false);
+
+                let oResults = oOperation.getBoundContext().getObject();
+                if (!oResults) {
+                    console.warn("userDetails: empty result — controls hidden by default");
+                    return;
+                }
+
+                oUserScopeJModel.setData(oResults);
+
+                if (oUserScopeJModel.oData.hasAdminAccess) {
+                    // Show and enable commencement checkboxes for admin
+                    this.getView().byId("idcommLetterSent").setVisible(true);
+                    this.getView().byId("idcommLetterSent").setEnabled(true);
+                    this.getView().byId("idcommLetterSigned").setVisible(true);
+                    this.getView().byId("idcommLetterSigned").setEnabled(true);
+                    // Export: visible only in quote context
+                    var bIsQuote = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+                    this.getView().byId("idbtnExport").setVisible(!!bIsQuote);
+                    this.getView().byId("idbtnExport").setEnabled(true);
+                }
+                // Non-admin: controls remain hidden from default-deny above
+            }.bind(this);
+
             let oOperation = omodel.bindContext("/userDetails(...)");
             try {
-                await oOperation.execute().then(function (res) {
-                    let oResults = oOperation.getBoundContext().getObject();
+                // Fix: no two-arg .then — let all rejections fall into catch
+                await oOperation.execute();
+                fnApplyUserResult(oOperation);
+            } catch (oError) {
+                // Hide controls on any error — deny by default
+                this.getView().byId("idcommLetterSent").setVisible(false);
+                this.getView().byId("idcommLetterSent").setEnabled(false);
+                this.getView().byId("idcommLetterSigned").setVisible(false);
+                this.getView().byId("idcommLetterSigned").setEnabled(false);
+                this.getView().byId("idbtnExport").setVisible(false);
+                this.getView().byId("idbtnExport").setEnabled(false);
 
-                    if (oResults) {
-                        oUserScopeJModel.setData(oResults);
-                        if (oUserScopeJModel.oData.hasAdminAccess) {
-                            this.getView().byId("idcommLetterSent").setEnabled(true);
-                            this.getView().byId("idcommLetterSigned").setEnabled(true);
-                            // this.getView().byId("idbtnExport").setVisible(true);
-                            this.getView().byId("idbtnExport").setVisible(
-                                this.getView().getModel("oSCDetail").getProperty("/isQuoteContext")
+                var sErrMsg = (oError && oError.message) ? oError.message : String(oError);
+                if (sErrMsg.indexOf("401") !== -1 || sErrMsg.indexOf("403") !== -1 ||
+                    sErrMsg.indexOf("No role") !== -1 || sErrMsg.indexOf("not trusted") !== -1) {
+                    console.warn("userDetails: transient auth error — retrying in 2s:", sErrMsg);
+                    setTimeout(async function () {
+                        try {
+                            var oRetryOp = omodel.bindContext("/userDetails(...)");
+                            await oRetryOp.execute();
+                            fnApplyUserResult(oRetryOp);
+                            console.log("userDetails: retry succeeded.");
+                        } catch (oRetryErr) {
+                            console.error("userDetails retry also failed:", oRetryErr.message);
+                            sap.m.MessageBox.error(
+                                "Unable to verify your role. Please refresh the page.\n\n" +
+                                "If this persists, contact your administrator to confirm your role assignment in BTP.",
+                                { title: "Authorization Error" }
                             );
                         }
-                        else if (oUserScopeJModel.oData.hasUserAccess) {
-                            this.getView().byId("idcommLetterSent").setEnabled(false);
-                            this.getView().byId("idcommLetterSigned").setEnabled(false);
-                            this.getView().byId("idbtnExport").setVisible(false);
-                        }
-                    } else {
-
-                    }
-                }.bind(this), function (err) {
-                    let message = err.message + "\n Roles not found! Contact support admin!";
-                    sap.m.MessageBox.error(err.message);
-                    console.error(err.message);
-
-                }.bind(this))
-
+                    }.bind(this), 2000);
+                    return;
+                }
+                console.error("userDetails error:", oError);
+                sap.m.MessageBox.error("Roles not found! Contact support admin.");
             }
-            catch (oError) {
-                console.error(oError);
-            }
-
         },
 
         // ── Sales Phase definitions per BPD ──────────────────────────────────
@@ -539,10 +636,25 @@ sap.ui.define([
 
             // ── ComboBoxes ───────────────────────────────────────────────────
             var oCatCB = this.getView().byId("idModel_CS");
+            // if (oCatCB && oParsed.oppCategory) {
+            //     oCatCB.setSelectedKey(oParsed.oppCategory);
+            //     this.onComboBoxtype();
+            // }
             if (oCatCB && oParsed.oppCategory) {
                 oCatCB.setSelectedKey(oParsed.oppCategory);
                 this.onComboBoxtype();
             }
+
+            // Re-apply Export button visibility now that isQuoteContext is correctly set
+            var oUserScope = this.getOwnerComponent().getModel("oUserScopeJModel");
+            var bAdminNow = oUserScope && oUserScope.oData && oUserScope.oData.hasAdminAccess;
+            var bIsQuoteNow = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+            var oExportBtn = this.getView().byId("idbtnExport");
+            if (oExportBtn) {
+                oExportBtn.setVisible(!!bAdminNow && !!bIsQuoteNow);
+                oExportBtn.setEnabled(!!bAdminNow && !!bIsQuoteNow);
+            }
+            
             var oPriceCB = this.getView().byId("idMode_CS");
             if (oPriceCB && oParsed.priceStructure) { oPriceCB.setSelectedKey(oParsed.priceStructure); }
             var oSalesCB = this.getView().byId("idMode_S");
@@ -623,6 +735,14 @@ sap.ui.define([
             var oSaveBtn = this.getView().byId("_IDButton_postgresav");
             if (oSaveBtn) { oSaveBtn.setEnabled(false); }
 
+            // ── BUG 17907: Also disable Fetch/Validate CA and Calculate ───────
+            var oFetchBtn = this.getView().byId("IDverify");
+            if (oFetchBtn) { oFetchBtn.setEnabled(false); }
+
+            var oCalcBtn = this.getView().byId("IDcalculate");
+            if (oCalcBtn) { oCalcBtn.setEnabled(false); }
+            // ──────────────────────────────────────────────────────────────────
+
             MessageToast.show(
                 sStatus === "Won"
                     ? "This Opportunity is Won and locked. Open the Quote to make amendments."
@@ -652,6 +772,13 @@ sap.ui.define([
             // Re-enable Save button
             var oSaveBtn = this.getView().byId("_IDButton_postgresav");
             if (oSaveBtn) { oSaveBtn.setEnabled(true); }
+
+            // BUG 17907: Re-enable Fetch and Calculate when unlocking
+            var oFetchBtn = this.getView().byId("IDverify");
+            if (oFetchBtn) { oFetchBtn.setEnabled(true); }
+
+            var oCalcBtn = this.getView().byId("IDcalculate");
+            if (oCalcBtn) { oCalcBtn.setEnabled(true); }
         },
         // ─────────────────────────────────────────────────────────────────────
         // _applyInactiveFilter — default filter: hide Inactive = 'Yes' rows
@@ -755,7 +882,7 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         onComboBoxtype: function () {
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
-            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array" );
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
             var bIsSMB = (sCategory === "MIGP - Small Business" || sCategory === "MIGP Small Business");
 
             this.getView().byId("tablesmall").setVisible(bIsSMB);
@@ -764,10 +891,20 @@ sap.ui.define([
             if (oSBox) { oSBox.setVisible(false); }
 
             ["idlblunmtrcon", "idunmtrcon", "idlblmtrcon", "idmtrcon", "idlterm", "idterm",
-                "idlblcommLetterSent", "idcommLetterSent", "idlblcommLetterSigned", "idcommLetterSigned"
+                // "idlblcommLetterSent", "idcommLetterSent", "idlblcommLetterSigned", "idcommLetterSigned"
             ].forEach(function (sId) {
                 var oCtrl = this.getView().byId(sId);
                 if (oCtrl) { oCtrl.setVisible(bIsLCVP); }
+            }.bind(this));
+
+            // Commencement letter controls: LCVP category AND admin role required
+            var oUserScopeJModel = this.getOwnerComponent().getModel("oUserScopeJModel");
+            var bIsAdmin = oUserScopeJModel && oUserScopeJModel.oData && oUserScopeJModel.oData.hasAdminAccess;
+            console.log("onComboBoxtype - oData:", JSON.stringify(oUserScopeJModel && oUserScopeJModel.oData), "bIsAdmin:", bIsAdmin);
+            ["idlblcommLetterSent", "idcommLetterSent", "idlblcommLetterSigned", "idcommLetterSigned"
+            ].forEach(function (sId) {
+                var oCtrl = this.getView().byId(sId);
+                if (oCtrl) { oCtrl.setVisible(bIsLCVP && !!bIsAdmin); }
             }.bind(this));
 
             // SMB-only fields — Referral Code + Enrollment Email ID
@@ -1110,13 +1247,25 @@ sap.ui.define([
         //  8   Fixed MWh   N/A        No         MIGP_R17_FXD_MWh, One-time Sale, no Export
         //
         // =====================================================================
-         oncalc: function () {
+        oncalc: function () {
             var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
             var oSCDetail = this.getView().getModel("oSCDetail");
             if (!oTabModel || !oSCDetail) {
                 MessageBox.error("Models not initialized. Please fetch opportunity first.");
                 return;
             }
+
+            // ── BUG 17907: Block calculate when Opportunity is fully closed ──
+            var sCalcStatus = oSCDetail.getProperty("/status") || "";
+            var sCalcPhase = oSCDetail.getProperty("/salesPhase") || "";
+            if (sCalcPhase === "Z4" && (sCalcStatus === "Closed" || sCalcStatus === "Won" || sCalcStatus === "Lost")) {
+                MessageBox.warning(
+                    "This Opportunity is in phase Z4 (Closure) with status '" + sCalcStatus +
+                    "'. Calculate is not available for closed opportunities."
+                );
+                return;
+            }
+            // ────────────────────────────────────────────────────────────────
 
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
             var bIsLCVP = (sCategory === "MIGP - LCVP");
@@ -1281,10 +1430,19 @@ sap.ui.define([
 
                         // estUsage per row
                         var rowEstUsage = 0;
+                        // Count selected CAs once 
+                        var nSelectedCAs = aCARows.filter(function (ca) {
+                            return ca.selected === true || ca.selected === 'true';
+                        }).length;
+                        if (nSelectedCAs === 0) nSelectedCAs = 1; // safety fallback avoid zeroing of calculation
+
                         if (bFixedDollar) {
                             // [SMB-FIXED-$] Annual Subscribed Load = (1 / netPremium) * fixedPrice * 12
                             // estUsage here represents the Annual Subscribed Load for this row
-                            rowEstUsage = (1 / netPremium) * fixedPrc * 12;
+                            // rowEstUsage = (1 / netPremium) * fixedPrc * 12;
+                            // [SMB-FIXED-$] fixedPrice is per-CA $/month; multiply by CA count first
+                            var totalMonthlyDollars = fixedPrc * nSelectedCAs;
+                            rowEstUsage = (1 / netPremium) * totalMonthlyDollars * 12;
                         } else if (fixedMWhV > 0) {
                             rowEstUsage = fixedMWhV;
                         } else if (subPct > 0) {
@@ -1563,21 +1721,33 @@ sap.ui.define([
                         sumRowTermMonths += r._termMonths;
                     });
 
-                    // ── Pass 1: annualSubs and wAvgSubFee ─────────────────────────────
-                    var wAvgSubFee = 0;
+                    // // ── Pass 1: annualSubs and wAvgSubFee ─────────────────────────────
+                    // var wAvgSubFee = 0;
+                    // aRows.forEach(function (r) {
+                    //     // [BUG-A FIX] use sumRowTermMonths as denominator (not termTotalMonths)
+                    //     var weight = sumRowTermMonths > 0 ? (r._termMonths / sumRowTermMonths) : 0;
+
+                    //     annualSubscribedLoad += weight * r._calcMWh;
+                    //     wAvgSubFee += weight * (parseFloat(r.portfolioprice) || 0);
+                    // });
+
+                    // // ── [BUG-B FIX] oppSubs = annualSubs × totalTermYears ────────────
+                    // oppSubscribedLoad = annualSubscribedLoad * totalTermYears;
+
+                    // // ── [BUG-C FIX] CLV = wAvgSubFee × oppSubs ───────────────────────
+                    // contractLifetimeValue = wAvgSubFee * oppSubscribedLoad;
                     aRows.forEach(function (r) {
-                        // [BUG-A FIX] use sumRowTermMonths as denominator (not termTotalMonths)
                         var weight = sumRowTermMonths > 0 ? (r._termMonths / sumRowTermMonths) : 0;
+                        var rowTermYears = r._termMonths / 12;
+                        var rowSubFee = parseFloat(r.portfolioprice) || 0;
 
                         annualSubscribedLoad += weight * r._calcMWh;
-                        wAvgSubFee += weight * (parseFloat(r.portfolioprice) || 0);
+
+                        // [FIX-CLV] Per-row: oppSubs and CLV accumulate independently
+                        var rowOppSubs = r._calcMWh * rowTermYears;
+                        oppSubscribedLoad += rowOppSubs;
+                        contractLifetimeValue += rowSubFee * rowOppSubs;
                     });
-
-                    // ── [BUG-B FIX] oppSubs = annualSubs × totalTermYears ────────────
-                    oppSubscribedLoad = annualSubscribedLoad * totalTermYears;
-
-                    // ── [BUG-C FIX] CLV = wAvgSubFee × oppSubs ───────────────────────
-                    contractLifetimeValue = wAvgSubFee * oppSubscribedLoad;
                 }
             }
 
@@ -1711,6 +1881,22 @@ sap.ui.define([
         //       • all others: selection preserved if still active
         // ─────────────────────────────────────────────────────────────────────
         onfetchCA: async function () {
+            // ── BUG 17907: Block fetch when Opportunity is fully closed ──────
+            var oSCDetailGuard = this.getView().getModel("oSCDetail");
+            if (oSCDetailGuard) {
+                var sGuardStatus = oSCDetailGuard.getProperty("/status") || "";
+                var sGuardPhase = oSCDetailGuard.getProperty("/salesPhase") || "";
+                var bIsClosedPhase = (sGuardPhase === "Z4");
+                var bIsClosedStatus = (sGuardStatus === "Closed" || sGuardStatus === "Won" || sGuardStatus === "Lost");
+                if (bIsClosedPhase && bIsClosedStatus) {
+                    MessageBox.warning(
+                        "This Opportunity is in phase Z4 (Closure) with status '" + sGuardStatus +
+                        "' and is fully locked. Fetch/Validate CA is not available."
+                    );
+                    return;
+                }
+            }
+            // ────────────────────────────────────────────────────────────────
             var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
             // ── ADD THIS ─────────────────────────────────────────────────────
             console.log("=== onfetchCA DEBUG ===");
@@ -2850,6 +3036,11 @@ sap.ui.define([
         // LCVP starts at: Structuring
         // ─────────────────────────────────────────────────────────────────────
         _loadSalesPhaseItems: function (sCategory, sCurrentPhase) {
+            // ADD THIS TEMPORARILY
+            console.log('_loadSalesPhaseItems → sCategory:', sCategory,
+                '| sCurrentPhase:', sCurrentPhase,
+                '| aAllPhases:', JSON.stringify(this._oSalesPhases[sCategory] || []));
+
             var oCB = this.getView().byId("idsalesPhase");
             if (!oCB) { return; }
 
@@ -3293,7 +3484,7 @@ sap.ui.define([
                         portfolio: s(r.portfolio),
                         fixedMWh: s(r.fixedMWh),
                         fixedPrice: s(r.fixedPrice),
-                        netPremium: s(r.netPremium),  
+                        netPremium: s(r.netPremium),
                         portfolioprice: s(r.portfolioprice),
                         subspercent: s(r.subspercent),
                         startDate: s(iso(r.startDate)),

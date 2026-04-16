@@ -29,9 +29,13 @@ module.exports = (srv) => {
 
 
     //User Roles
-
-
     srv.on('userDetails', async (req) => {
+      // BUG 17908: Guard against missing authInfo on transient XSUAA token failures
+      if (!req.user || !req.user.authInfo || !req.user.authInfo.token) {
+        console.error('userDetails: req.user.authInfo missing — likely transient XSUAA issue');
+        return req.error(401, 'Authorization token unavailable. Please retry.');
+      }
+
       const roles = Object.keys(req.user.roles || {});
       console.log(roles);
       let userName = req.user.authInfo.token.getPayload().user_name, //U id if DTE SSO otherwise email
@@ -42,10 +46,14 @@ module.exports = (srv) => {
       for (var i = 0; i < roles.length; i++) {
         let scope = roles[i];
         switch (scope) {
+          // BUG 17908: XSUAA delivers scopes as "xsappname.ScopeName" in production
+          // Match both bare name (local dev) and prefixed name (BTP production)
           case "MIGP_User":
+          case "salescloud.MIGP_User":
             hasUserAccess = true;
             break;
           case "MIGP_Admin":
+          case "salescloud.MIGP_Admin":
             hasAdminAccess = true;
             break;
           default:
@@ -181,6 +189,7 @@ module.exports = (srv) => {
             year: r.year || ''
           }))
         };
+        console.log('lastFetchedAt from DB:', opp.lastFetchedAt);
 
         // FIX: wrap inner result as JSON string so controller unwrap logic is consistent
         return JSON.stringify({ value: JSON.stringify(result) });
@@ -328,8 +337,12 @@ module.exports = (srv) => {
           // Only persist if it's a valid ISO timestamp — ignore display-formatted strings
           lastFetchedAt: header.lastFetchedAt && header.lastFetchedAt.includes('T')
             ? header.lastFetchedAt
-            : undefined,
+            // : undefined,
+            : null,   // ← null instead of undefined — forces explicit DB write
+
         };
+        // Move log here to confirm actual value going into UPDATE
+        console.log('lastFetchedAt being saved:', oppCols.lastFetchedAt);
 
         let oppID;
         if (existing) {
@@ -711,14 +724,17 @@ module.exports = (srv) => {
           ]);
 
           // Fall back to parent OPP status if Quote shell has none
-          let sQuoteStatus = existingQuote.status || '';
-          if (!sQuoteStatus && oppId && oppId.trim()) {
-            const oppForStatus = await db.run(
-              SELECT.one.from(Opportunity).columns('status')
-                .where({ Oppid: oppId.trim(), objectStatus: 'OPP' })
-            );
-            sQuoteStatus = (oppForStatus && oppForStatus.status) ? oppForStatus.status : '';
-          }
+          // let sQuoteStatus = existingQuote.status || '';
+          // if (!sQuoteStatus && oppId && oppId.trim()) {
+          //   const oppForStatus = await db.run(
+          //     SELECT.one.from(Opportunity).columns('status')
+          //       .where({ Oppid: oppId.trim(), objectStatus: 'OPP' })
+          //   );
+          //   sQuoteStatus = (oppForStatus && oppForStatus.status) ? oppForStatus.status : '';
+          // }
+          // Quote status is always "Open" — never inherit from OPP
+          // (OPP may be Structuring/Approved etc. which is not valid for a freshly loaded Quote)
+          let sQuoteStatus = existingQuote.status || 'Open';
 
           const result = {
             _isNew: false,
@@ -1035,14 +1051,16 @@ module.exports = (srv) => {
 
 
           // Fall back to parent OPP status if Quote shell has none
-          let sQuoteStatus = quoteShell.status || '';
-          if (!sQuoteStatus && quoteShell.Oppid) {
-            const oppForStatus = await db.run(
-              SELECT.one.from(Opportunity).columns('status')
-                .where({ Oppid: quoteShell.Oppid, objectStatus: 'OPP' })
-            );
-            sQuoteStatus = (oppForStatus && oppForStatus.status) ? oppForStatus.status : '';
-          }
+          // let sQuoteStatus = quoteShell.status || '';
+          // if (!sQuoteStatus && quoteShell.Oppid) {
+          //   const oppForStatus = await db.run(
+          //     SELECT.one.from(Opportunity).columns('status')
+          //       .where({ Oppid: quoteShell.Oppid, objectStatus: 'OPP' })
+          //   );
+          //   sQuoteStatus = (oppForStatus && oppForStatus.status) ? oppForStatus.status : '';
+          // }
+          // Quote status is always "Open" — never inherit from OPP
+          let sQuoteStatus = quoteShell.status || 'Open';
 
           const result = {
             _isNew: false,
@@ -2266,7 +2284,7 @@ module.exports = (srv) => {
               migpMWh: snap.migpMWh ?? null,
               recMWh: snap.recMWh ?? null,
               estUsage: snap.estUsage ?? null,
-              netPremium: snap.netPremium ?? null, 
+              netPremium: snap.netPremium ?? null,
               opportunity_ID: oppID
             };
           });
