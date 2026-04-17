@@ -9,6 +9,7 @@ type InvolvedPartiesinput {
 
 type ProviderContractinput {
   product        : String;
+  productId       : String; 
   portfolio      : String;
   fixedMWh       : String;
   fixedPrice     : String;

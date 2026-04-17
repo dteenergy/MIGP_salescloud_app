@@ -187,9 +187,20 @@ sap.ui.define([
                     this.getView().byId("idcommLetterSigned").setVisible(true);
                     this.getView().byId("idcommLetterSigned").setEnabled(true);
                     // Export: visible only in quote context
-                    var bIsQuote = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
-                    this.getView().byId("idbtnExport").setVisible(!!bIsQuote);
-                    this.getView().byId("idbtnExport").setEnabled(true);
+                    // var bIsQuote = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+                    // this.getView().byId("idbtnExport").setVisible(!!bIsQuote);
+                    // this.getView().byId("idbtnExport").setEnabled(true);
+                    // Export: visible based on category + context (admin only)
+                    const oSCDetail = this.getView().getModel("oSCDetail");
+                    const bIsQuoteContext = oSCDetail.getProperty("/isQuoteContext");
+                    const sCategory = oSCDetail.getProperty("/oppCategory");
+
+                    const bShowExport =
+                        (sCategory === "MIGP - Small Business" && !bIsQuoteContext) ||
+                        ((sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array") && bIsQuoteContext);
+
+                    this.getView().byId("idbtnExport").setVisible(bShowExport);
+                    this.getView().byId("idbtnExport").setEnabled(bShowExport);
                 }
                 // Non-admin: controls remain hidden from default-deny above
             }.bind(this);

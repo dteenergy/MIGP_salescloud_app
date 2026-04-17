@@ -188,7 +188,8 @@
             <core:Title id="_IDGenTitle2_CC"/>
 
             <!-- Row 1 R: Opportunity Category -->
-            <Label id="idlblEmerConName_CC" text="{i18n>oppcat}"/>
+            <!-- <Label id="idlblEmerConName_CC" text="{i18n>oppcat}"/> -->
+            <Label id="idlblEmerConName_CC" text="{= ${oSCDetail>/isQuoteContext} === true ? 'Quote Category' : 'Opportunity Category' }"/>
             <ComboBox id="idModel_CS" selectionChange="onComboBoxtype"  editable="false"  enabled="false" class="noGreyCombo">
                 <core:Item id="_IDGenItem9" key="MIGP - Small Business" text="MIGP - Small Business"/>
                 <core:Item id="_IDGenItem10" key="MIGP - LCVP"                  text="MIGP - LCVP"/>
@@ -469,7 +470,7 @@
               <Column id="_IDGenColumn25"><Text id="_IDGenText48" text="Subscription Fee ($/MWh)"/></Column>
               <Column id="_IDGenColumn26"><Text id="_IDGenText49" text="Subscription %"/></Column>
               <Column id="_IDGenColumn27"><Text id="_IDGenText50" text="Start Date"/></Column>
-              <Column id="_IDGenColumn28"><Text id="_IDGenText51" text="End Date"/></Column>
+              <!-- <Column id="_IDGenColumn28"><Text id="_IDGenText51" text="End Date"/></Column> -->
               <Column id="_IDGenColumn29"><Text id="_IDGenText52" text="Est. Usage (MWh)"/></Column>
               <!-- BTP suggestion #4 -->
               <!-- <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column> -->
@@ -528,7 +529,7 @@
     <core:Item id="_IDGenItem56" key="100" text="100"/>
 </Select>
                   <Input id="_IDGenInput5" value="{oOpportunityjmodel>startDate}" editable="false" />
-                  <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="false" />
+                  <!-- <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="false" /> -->
                   <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/>
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
                   <!-- <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/> -->
@@ -704,6 +705,7 @@
             press="onSortFilterPR"/>
             <Button id="idbtn_addnewRow_Fuses" type="Emphasized" icon="sap-icon://add"
                     press="onAddnewProspectRow"
+                    enabled="{= ${oSCDetail>/status} !== 'Won' &amp;&amp; ${oSCDetail>/status} !== 'Closed' }"
                     tooltip="Add a Dummy CA with projected consumption (FDD Req#36)"/>
           </OverflowToolbar>
 

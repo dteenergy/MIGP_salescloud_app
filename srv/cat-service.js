@@ -147,6 +147,7 @@ module.exports = (srv) => {
 
           providerContracts: providerContracts.map(r => ({
             product: r.product || '',
+            productId: r.productId || '', 
             portfolio: r.portfolio || '',
             fixedMWh: r.fixedMWh || '',
             fixedPrice: r.fixedPrice || '',
@@ -373,6 +374,7 @@ module.exports = (srv) => {
         const pcRows = (providerContracts || []).map(r => ({
           ID: cds.utils.uuid(),
           product: asStr(r.product),
+          productId: asStr(r.productId), 
           portfolio: asStr(r.portfolio),
           fixedMWh: asStr(r.fixedMWh),
           fixedPrice: asStr(r.fixedPrice),
@@ -567,6 +569,7 @@ module.exports = (srv) => {
 
           providerContracts: pcs.map(r => ({
             product: r.product || '',
+            ductIdpro: r.productId || '', 
             portfolio: r.portfolio || '',
             fixedMWh: r.fixedMWh || '',
             fixedPrice: r.fixedPrice || '',
@@ -1701,10 +1704,10 @@ module.exports = (srv) => {
   // ─── CPIService ────────────────────────────────────────────────────────────
   if (srv.name === 'CPIService') {
 
-    srv.on('PushOpportunityFromCPI', async (req) => {
-      const { Opportunity, InvolvedParties, ProviderContract } = cds.entities('com.salescloud');
-      const { opp, involvedParties, providerContracts } = req.data || {};
 
+    srv.on('PushOpportunityFromCPI', async (req) => {
+      const { Opportunity, InvolvedParties, ConsumptionDetail, ProviderContract, Prospect } = cds.entities('com.salescloud');
+      const { opp, involvedParties, providerContracts } = req.data || {};
       if (!opp || typeof opp.Oppid !== 'string' || !opp.Oppid.trim()) {
         return req.error(400, 'opp.Oppid is required and must be a non-empty string');
       }
@@ -1722,26 +1725,6 @@ module.exports = (srv) => {
           }
         }
       }
-
-      // // In PushOpportunityFromCPI — add after existing validation:
-      // const aValidStatuses = [
-      //   "In Progress", "Structuring", "In Approval",
-      //   "Approved", "Rejected", "Contract Sign-Off", "Closed", "Won"
-      // ];
-
-      // if (opp.status) {
-      //   const sMatchedStatus = aValidStatuses.find(s =>
-      //     s.toLowerCase() === opp.status.toLowerCase()
-      //   );
-      //   if (!sMatchedStatus) {
-      //     console.warn('Unknown status from CPI:', opp.status);
-      //     // Don't reject — just warn and save as-is
-      //     // C4C may send new statuses in future
-      //   } else {
-      //     opp.status = sMatchedStatus; // normalize case
-      //   }
-      // }
-
       // ── Status code → label map (CPI now sends Z-codes) ──────────────────
       const oStatusCodeMap = {
         'Z0': 'Open',
@@ -1761,12 +1744,15 @@ module.exports = (srv) => {
           const aValidStatuses = [
             'Open', 'In Progress', 'Won', 'Lost', 'Closed', 'Structuring'
           ];
+
           const sMatched = aValidStatuses.find(s =>
             s.toLowerCase() === opp.status.toLowerCase()
           );
+
           if (sMatched) {
             opp.status = sMatched;
           } else {
+
             console.warn('Unknown status from CPI:', opp.status);
             // Don't reject — save as-is so nothing is lost
           }
@@ -1774,16 +1760,16 @@ module.exports = (srv) => {
       }
 
       // ── Log received salesPhase ───────────────────────────────────────
+
       if (opp.salesPhase) {
         console.log('Received salesPhase from C4C:',
           opp.salesPhase, '→',
-          oPhaseMap[opp.salesPhase] || 'Unknown'  // ✅ oPhaseMap used here
+          oPhaseMap[opp.salesPhase] || 'Unknown'
         );
       }
 
       const tx = cds.tx(req);
       let inserted = 0, updated = 0, childrenWritten = 0;
-
       const insertInBatches = async (Entity, rows) => {
         if (!Array.isArray(rows) || rows.length === 0) return 0;
         let ok = 0;
@@ -1806,21 +1792,20 @@ module.exports = (srv) => {
         return ok;
       };
 
+      // ── Helper: build PC snap lookup map keyed strictly by productId ──────
+      // Rows without productId are left out — handled by migration path in loop
+
+      const buildPCSnapById = (rows) => {
+        const byProductId = {};
+        rows.forEach(r => {
+          if (r.productId) byProductId[r.productId] = r;
+        });
+        return byProductId;
+      };
       try {
-        // ── Route based on objectStatus ───────────────────────────────────
-        // OPP  → upsert Opportunity row, replace children
-        // QUOTE → create Quote shell row only (no children from CPI)
-        //         children will be copied from OPP when user opens Quote iFrame
-
-        // const isQuotePush = (opp.objectStatus === 'QUOTE');
         // ── Detect push type by quoteId presence ─────────────────────────
-        // If quoteId is present → Quote shell push
-        // If quoteId is absent  → Opportunity push
-        // No need for CPI to send objectStatus — we derive it here
         const isQuotePush = (opp.quoteId && opp.quoteId.trim() !== '');
-        // Set objectStatus accordingly — do not rely on CPI sending it
         opp.objectStatus = isQuotePush ? 'QUOTE' : 'OPP';
-
         console.log('PushOpportunityFromCPI — detected as:',
           opp.objectStatus,
           '| Oppid:', opp.Oppid,
@@ -1828,162 +1813,51 @@ module.exports = (srv) => {
         );
 
         if (isQuotePush) {
-          // ── QUOTE push — create shell row if not exists ─────────────────
-          // Do NOT touch the OPP row
-          // quoteId = 123, Oppid = 456 (parent link)
+          // ── QUOTE push ────────────────────────────────────────────────────
           console.log('Quote push received: QuoteID=', opp.quoteId,
             '← OppID=', opp.Oppid);
-
           const existingQuote = await tx.run(
             SELECT.one.from(Opportunity).columns('ID', 'Oppid')
               .where({ quoteId: opp.quoteId, objectStatus: 'QUOTE' })
           );
 
           if (existingQuote) {
-            // ── GUARD: Ensure Quote belongs to the same Oppid ──────────────
-            // Fetch the full row to check its parent Oppid
-            const existingQuoteFull = await tx.run(
-              SELECT.one.from(Opportunity).columns('ID', 'Oppid')
-                .where({ quoteId: opp.quoteId, objectStatus: 'QUOTE' })
-            );
-
-            if (existingQuoteFull.Oppid !== opp.Oppid) {
-              // Quote-2002 belongs to OPP-1002, but payload says OPP-1001 → REJECT
+            // Guard: Ensure Quote belongs to the same Oppid
+            if (existingQuote.Oppid !== opp.Oppid) {
               return req.error(409,
-                `Quote '${opp.quoteId}' is already linked to Opportunity '${existingQuoteFull.Oppid}'. ` +
+                `Quote '${opp.quoteId}' is already linked to Opportunity '${existingQuote.Oppid}'. ` +
                 `Cannot re-link to '${opp.Oppid}'.`
               );
             }
 
-            // Same Oppid — safe to update status
+            // Update status fields
+
             await tx.run(
               UPDATE(Opportunity).set({
                 status: opp.status ?? null,
                 salesPhase: opp.salesPhase ?? null
               }).where({ ID: existingQuote.ID })
             );
+
             updated++;
             console.log('Quote shell updated:', opp.quoteId);
-            // ── Merge new IP rows from payload into QUOTE ────────────────────
-            // if (Array.isArray(involvedParties) && involvedParties.length > 0) {
 
-            //   const existingIP = await tx.run(
-            //     SELECT.from(InvolvedParties)
-            //       .where({ opportunity_ID: existingQuote.ID })
-            //   );
-
-            //   const quoteIPKeys = existingIP.map(r => `${r.buspartner}|${r.role}`);
-
-            //   const newIPRows = involvedParties.filter(x =>
-            //     !quoteIPKeys.includes(`${x.buspartner}|${x.role}`)
-            //   );
-
-            //   if (newIPRows.length > 0) {
-            //     const ipRows = newIPRows.map(x => ({
-            //       ID: cds.utils.uuid(),
-            //       buspartner: x?.buspartner ?? null,
-            //       role: x?.role ?? null,
-            //       opportunity_ID: existingQuote.ID
-            //     }));
-            //     await insertInBatches(InvolvedParties, ipRows);
-            //     console.log(`Merged ${newIPRows.length} new IP rows into Quote:`, opp.quoteId);
-            //   }
-            // }
-            // // ── Merge new PC rows from payload into QUOTE ────────────────────
-            // if (Array.isArray(providerContracts) && providerContracts.length > 0) {
-
-            //   const existingPC = await tx.run(
-            //     SELECT.from(ProviderContract)
-            //       .where({ opportunity_ID: existingQuote.ID })
-            //   );
-
-            //   const quoteKeys = existingPC.map(r => `${r.product}|${r.portfolio}`);
-
-            //   const newRows = providerContracts.filter(x =>
-            //     !quoteKeys.includes(`${x.product}|${x.portfolio}`)
-            //   );
-
-            //   if (newRows.length > 0) {
-            //     const pcRows = newRows.map(x => ({
-            //       ID: cds.utils.uuid(),
-            //       product: x?.product ?? null,
-            //       portfolio: x?.portfolio ?? null,
-            //       fixedMWh: x?.fixedMWh ?? null,
-            //       fixedPrice: x?.fixedPrice ?? null,
-            //       portfolioprice: x?.portfolioprice ?? null,
-            //       subspercent: x?.subspercent ?? null,
-            //       startDate: x?.startDate ?? null,
-            //       endDate: x?.endDate ?? null,
-            //       enrollChk: x?.enrollChk ?? null,
-            //       exportDate: x?.exportDate ?? null,
-            //       exportChk: x?.exportChk ?? null,
-            //       opportunity_ID: existingQuote.ID
-            //     }));
-
-            //     await insertInBatches(ProviderContract, pcRows);
-            //     console.log(`Merged ${newRows.length} new PC rows into Quote:`, opp.quoteId);
-            //   }
-            // }
-            // ── Full replace IP rows for QUOTE (C4C is source of truth) ─────
-            // await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: existingQuote.ID }));
-            // if (Array.isArray(involvedParties) && involvedParties.length > 0) {
-            //   const ipRows = involvedParties.map(x => ({
-            //     ID: cds.utils.uuid(),
-            //     buspartner: x?.buspartner ?? null,
-            //     role: x?.role ?? null,
-            //     opportunity_ID: existingQuote.ID
-            //   }));
-            //   await insertInBatches(InvolvedParties, ipRows);
-            //   console.log(`Replaced ${ipRows.length} IP rows for Quote:`, opp.quoteId);
-            // }
-
-            // // ── Full replace PC rows for QUOTE (C4C is source of truth) ─────
-            // await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
-            // if (Array.isArray(providerContracts) && providerContracts.length > 0) {
-            //   const pcRows = providerContracts.map(x => ({
-            //     ID: cds.utils.uuid(),
-            //     product: x?.product ?? null,
-            //     portfolio: x?.portfolio ?? null,
-            //     fixedMWh: x?.fixedMWh ?? null,
-            //     fixedPrice: x?.fixedPrice ?? null,
-            //     portfolioprice: x?.portfolioprice ?? null,
-            //     subspercent: x?.subspercent ?? null,
-            //     startDate: x?.startDate ?? null,
-            //     endDate: x?.endDate ?? null,
-            //     enrollChk: x?.enrollChk ?? null,
-            //     exportDate: x?.exportDate ?? null,
-            //     exportChk: x?.exportChk ?? null,
-            //     opportunity_ID: existingQuote.ID
-            //   }));
-            //   await insertInBatches(ProviderContract, pcRows);
-            //   console.log(`Replaced ${pcRows.length} PC rows for Quote:`, opp.quoteId);
-            // }
-
-            // ── Replicate OPP children into QUOTE, then append payload rows ──
             // Step A: Load parent OPP
+
             const parentOpp = await tx.run(
               SELECT.one.from(Opportunity).columns('ID')
                 .where({ Oppid: existingQuote.Oppid, objectStatus: 'OPP' })
             );
 
-            // Step B: Wipe existing quote children — full replace
+            // Step B: Replace IP rows
+
             await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: existingQuote.ID }));
-            // await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
-            // Snapshot QUOTE's existing exportChk/exportDate before wiping
-            const existingQuotePCSnap = await tx.run(
-              SELECT.from(ProviderContract).where({ opportunity_ID: existingQuote.ID })
-            );
-            const quoteSnapMap = {};
-            existingQuotePCSnap.forEach(r => { quoteSnapMap[`${r.product}|${r.portfolio}|${r.startDate}`] = r; });
-
-            await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
-
-            // Step C: Copy ALL IP rows from OPP into quote
             let baseIPRows = [];
             if (parentOpp) {
               const oppIP = await tx.run(
                 SELECT.from(InvolvedParties).where({ opportunity_ID: parentOpp.ID })
               );
+
               baseIPRows = oppIP.map(r => ({
                 ID: cds.utils.uuid(),
                 buspartner: r.buspartner ?? null,
@@ -1992,7 +1866,6 @@ module.exports = (srv) => {
               }));
             }
 
-            // Step D: Append NEW IP rows from payload (skip duplicates already in OPP)
             const existingIPKeys = baseIPRows.map(r => `${r.buspartner}|${r.role}`);
             const newIPRows = (involvedParties || [])
               .filter(x => !existingIPKeys.includes(`${x?.buspartner}|${x?.role}`))
@@ -2009,17 +1882,28 @@ module.exports = (srv) => {
               console.log(`Quote IP: ${baseIPRows.length} from OPP + ${newIPRows.length} new from payload = ${allIPRows.length} total`);
             }
 
-            // Step E: Copy ALL PC rows from OPP into quote
-            // Step E: Copy ALL PC rows from OPP into quote
+            // Step C: Snapshot existing Quote PC BTP fields before wiping
+
+            const existingQuotePCSnap = await tx.run(
+              SELECT.from(ProviderContract).where({ opportunity_ID: existingQuote.ID })
+            );
+
+            const quoteSnapById = buildPCSnapById(existingQuotePCSnap);
+            await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: existingQuote.ID }));
+
+            // Step D: Copy ALL PC rows from OPP into quote, restoring BTP values via snap
+
             let basePCRows = [];
             if (parentOpp) {
               const oppPC = await tx.run(
                 SELECT.from(ProviderContract).where({ opportunity_ID: parentOpp.ID })
               );
+
               basePCRows = oppPC.map(r => {
-                const snap = quoteSnapMap[`${r.product}|${r.portfolio}|${r.startDate}`] || {};
+                const snap = (r.productId && quoteSnapById[r.productId]) ? quoteSnapById[r.productId] : {};
                 return {
                   ID: cds.utils.uuid(),
+                  productId: r.productId ?? null,
                   product: r.product ?? null,
                   portfolio: r.portfolio ?? null,
                   startDate: r.startDate ?? null,
@@ -2031,37 +1915,49 @@ module.exports = (srv) => {
                   enrollChk: snap.enrollChk ?? r.enrollChk ?? null,
                   exportChk: snap.exportChk ?? null,
                   exportDate: snap.exportDate ?? null,
-                  // ── These were missing ──
                   recPrice: snap.recPrice ?? r.recPrice ?? null,
                   migpPercent: snap.migpPercent ?? r.migpPercent ?? null,
                   recpercent: snap.recpercent ?? r.recpercent ?? null,
                   migpMWh: snap.migpMWh ?? r.migpMWh ?? null,
                   recMWh: snap.recMWh ?? r.recMWh ?? null,
                   estUsage: snap.estUsage ?? r.estUsage ?? null,
-                  netPremium: snap.netPremium ?? r.netPremium ?? null,   // ← ADD
+                  netPremium: snap.netPremium ?? r.netPremium ?? null,
                   opportunity_ID: existingQuote.ID
                 };
               });
             }
 
-            // Step F: Append NEW PC rows from payload (skip duplicates already in OPP)
-            const existingPCKeys = basePCRows.map(r => `${r.product}|${r.portfolio}|${r.startDate}`);
+            // Step E: Append NEW PC rows from payload not already covered by OPP
+
+            const existingPCIds = basePCRows.filter(r => r.productId).map(r => r.productId);
+            const existingPCProducts = basePCRows.filter(r => !r.productId).map(r => r.product);
             const newPCRows = (providerContracts || [])
-              .filter(x => !existingPCKeys.includes(`${x?.product}|${x?.portfolio}${x?.startDate}`))
+              .filter(x => {
+                if (x?.productId) return !existingPCIds.includes(x.productId);
+                return !existingPCProducts.includes(x?.product);
+              })
+
               .map(x => ({
                 ID: cds.utils.uuid(),
+                productId: x?.productId ?? null,
                 product: x?.product ?? null,
-                portfolio: x?.portfolio ?? null,
-                fixedMWh: x?.fixedMWh ?? null,
-                fixedPrice: x?.fixedPrice ?? null,
-                portfolioprice: x?.portfolioprice ?? null,
-                subspercent: x?.subspercent ?? null,
+                portfolio: null,
+                fixedMWh: null,
+                fixedPrice: null,
+                portfolioprice: null,
+                subspercent: null,
                 startDate: x?.startDate ?? null,
                 endDate: x?.endDate ?? null,
-                enrollChk: x?.enrollChk ?? null,
-                exportDate: null,   // new rows have no prior BTP values
-                exportChk: null,    // ← restore QUOTE's own value
-                netPremium: x?.netPremium ?? null, // my add
+                enrollChk: null,
+                exportDate: null,
+                exportChk: null,
+                netPremium: null,
+                recPrice: null,
+                migpPercent: null,
+                recpercent: null,
+                migpMWh: null,
+                recMWh: null,
+                estUsage: null,
                 opportunity_ID: existingQuote.ID
               }));
 
@@ -2070,52 +1966,72 @@ module.exports = (srv) => {
               await insertInBatches(ProviderContract, allPCRows);
               console.log(`Quote PC: ${basePCRows.length} from OPP + ${newPCRows.length} new from payload = ${allPCRows.length} total`);
             }
-          }
+          } else {
 
-          // else {
-          //   // First time — create Quote shell row
-          //   const newQuoteID = cds.utils.uuid();
-          //   await tx.run(INSERT.into(Opportunity).entries({
-          //     ID: newQuoteID,
-          //     Oppid: opp.Oppid,        // ← 456 (parent OppID, used for copy)
-          //     objectStatus: 'QUOTE',
-          //     quoteId: opp.quoteId,      // ← 123 (C4C Quote ID)
-          //     status: opp.status ?? null,
-          //     oppCategory: opp.oppCategory ?? null,
-          //     salesPhase: opp.salesPhase ?? null
-          //     // No children here — copied from OPP when user opens iFrame
-          //   }));
-          //   inserted++;
-          //   console.log('Quote shell created: QuoteID=', opp.quoteId,
-          //     'linked to OppID=', opp.Oppid);
-          // }
-          else {
             // First time — create Quote shell row
             const newQuoteID = cds.utils.uuid();
+            // await tx.run(INSERT.into(Opportunity).entries({
+            //   ID: newQuoteID,
+            //   Oppid: opp.Oppid,
+            //   objectStatus: 'QUOTE',
+            //   quoteId: opp.quoteId,
+            //   status: opp.status ?? null,
+            //   oppCategory: opp.oppCategory ?? null,
+            //   salesPhase: opp.salesPhase ?? null
+            // }));
+            // ── Fetch full OPP header so we can copy ALL fields into the new Quote shell ──
+            const parentOppHeader = await tx.run(
+              SELECT.one.from(Opportunity)
+                .where({ Oppid: opp.Oppid, objectStatus: 'OPP' })
+            );
+
             await tx.run(INSERT.into(Opportunity).entries({
               ID: newQuoteID,
               Oppid: opp.Oppid,
               objectStatus: 'QUOTE',
               quoteId: opp.quoteId,
-              status: opp.status ?? null,
-              oppCategory: opp.oppCategory ?? null,
-              salesPhase: opp.salesPhase ?? null
+              // ── Status: always Open for a new Quote, never copied from OPP ──
+              status: 'Open',
+              // ── C4C fields (from CPI payload) ──
+              oppCategory: opp.oppCategory ?? parentOppHeader?.oppCategory ?? null,
+              salesPhase: opp.salesPhase ?? parentOppHeader?.salesPhase ?? null,
+              // ── All remaining header fields — copied from parent OPP ──
+              annualGross: parentOppHeader?.annualGross ?? null,
+              sizeofOpp: parentOppHeader?.sizeofOpp ?? null,
+              percentUsage: parentOppHeader?.percentUsage ?? null,
+              annualSubs: parentOppHeader?.annualSubs ?? null,
+              oppSubs: parentOppHeader?.oppSubs ?? null,
+              contLifetimeval: parentOppHeader?.contLifetimeval ?? null,
+              salesType: parentOppHeader?.salesType ?? null,
+              priceStructure: parentOppHeader?.priceStructure ?? null,
+              nte: parentOppHeader?.nte ?? null,
+              annualMWh: parentOppHeader?.annualMWh ?? null,
+              term: parentOppHeader?.term ?? null,
+              meteredCon: parentOppHeader?.meteredCon ?? null,
+              unmeteredCon: parentOppHeader?.unmeteredCon ?? null,
+              commencementLetterSent: parentOppHeader?.commencementLetterSent ?? null,
+              commencementLetterSigned: parentOppHeader?.commencementLetterSigned ?? null,
+              enrolled: parentOppHeader?.enrolled ?? null,
+              includeInPipeline: parentOppHeader?.includeInPipeline ?? null,
+              enrollmentReferralCode: parentOppHeader?.enrollmentReferralCode ?? null,
+              enrollmentEmailId: parentOppHeader?.enrollmentEmailId ?? null,
+              lastFetchedAt: parentOppHeader?.lastFetchedAt ?? null,
             }));
+
             inserted++;
             console.log('Quote shell created: QuoteID=', opp.quoteId, 'linked to OppID=', opp.Oppid);
-
-            // ── Immediately copy OPP children + append payload rows ───────────
             const parentOppNew = await tx.run(
               SELECT.one.from(Opportunity).columns('ID')
                 .where({ Oppid: opp.Oppid, objectStatus: 'OPP' })
             );
 
-            // Copy ALL IP rows from OPP
+            // Copy IP rows from OPP + append new from payload
             let newShellIPRows = [];
             if (parentOppNew) {
               const oppIP = await tx.run(
                 SELECT.from(InvolvedParties).where({ opportunity_ID: parentOppNew.ID })
               );
+
               newShellIPRows = oppIP.map(r => ({
                 ID: cds.utils.uuid(),
                 buspartner: r.buspartner ?? null,
@@ -2124,9 +2040,9 @@ module.exports = (srv) => {
               }));
             }
 
-            // Append NEW IP rows from payload (not already in OPP)
             const shellIPKeys = newShellIPRows.map(r => `${r.buspartner}|${r.role}`);
             const extraIPRows = (involvedParties || [])
+
               .filter(x => !shellIPKeys.includes(`${x?.buspartner}|${x?.role}`))
               .map(x => ({
                 ID: cds.utils.uuid(),
@@ -2141,7 +2057,7 @@ module.exports = (srv) => {
               console.log(`New Quote IP: ${newShellIPRows.length} from OPP + ${extraIPRows.length} from payload`);
             }
 
-            // Copy ALL PC rows from OPP
+            // Copy PC rows from OPP + append new from payload
             let newShellPCRows = [];
             if (parentOppNew) {
               const oppPC = await tx.run(
@@ -2149,6 +2065,7 @@ module.exports = (srv) => {
               );
               newShellPCRows = oppPC.map(r => ({
                 ID: cds.utils.uuid(),
+                productId: r.productId ?? null,
                 product: r.product ?? null,
                 portfolio: r.portfolio ?? null,
                 fixedMWh: r.fixedMWh ?? null,
@@ -2161,27 +2078,46 @@ module.exports = (srv) => {
                 exportDate: r.exportDate ?? null,
                 exportChk: r.exportChk ?? null,
                 netPremium: r.netPremium ?? null,
+                recPrice: r.recPrice ?? null,
+                migpPercent: r.migpPercent ?? null,
+                recpercent: r.recpercent ?? null,
+                migpMWh: r.migpMWh ?? null,
+                recMWh: r.recMWh ?? null,
+                estUsage: r.estUsage ?? null,
                 opportunity_ID: newQuoteID
               }));
             }
 
-            // Append NEW PC rows from payload (not already in OPP)
-            const shellPCKeys = newShellPCRows.map(r => `${r.product}|${r.portfolio}|${r.startDate}`);
+            const shellPCIds = newShellPCRows.filter(r => r.productId).map(r => r.productId);
+            const shellPCProducts = newShellPCRows.filter(r => !r.productId).map(r => r.product);
             const extraPCRows = (providerContracts || [])
-              .filter(x => !shellPCKeys.includes(`${x?.product}|${x?.portfolio}`))
+
+              .filter(x => {
+                if (x?.productId) return !shellPCIds.includes(x.productId);
+                return !shellPCProducts.includes(x?.product);
+              })
+
               .map(x => ({
                 ID: cds.utils.uuid(),
+                productId: x?.productId ?? null,
                 product: x?.product ?? null,
-                portfolio: x?.portfolio ?? null,
-                fixedMWh: x?.fixedMWh ?? null,
-                fixedPrice: x?.fixedPrice ?? null,
-                portfolioprice: x?.portfolioprice ?? null,
-                subspercent: x?.subspercent ?? null,
+                portfolio: null,
+                fixedMWh: null,
+                fixedPrice: null,
+                portfolioprice: null,
+                subspercent: null,
                 startDate: x?.startDate ?? null,
                 endDate: x?.endDate ?? null,
-                enrollChk: x?.enrollChk ?? null,
-                exportDate: x?.exportDate ?? null,
-                exportChk: x?.exportChk ?? null,
+                enrollChk: null,
+                exportDate: null,
+                exportChk: null,
+                netPremium: null,
+                recPrice: null,
+                migpPercent: null,
+                recpercent: null,
+                migpMWh: null,
+                recMWh: null,
+                estUsage: null,
                 opportunity_ID: newQuoteID
               }));
 
@@ -2190,10 +2126,65 @@ module.exports = (srv) => {
               await insertInBatches(ProviderContract, allNewPCRows);
               console.log(`New Quote PC: ${newShellPCRows.length} from OPP + ${extraPCRows.length} from payload`);
             }
+
+            // Copy ConsumptionDetail rows from OPP
+            let newShellCDRows = [];
+            if (parentOppNew) {
+              const oppCD = await tx.run(
+                SELECT.from(ConsumptionDetail).where({ opportunity_ID: parentOppNew.ID })
+              );
+
+              newShellCDRows = oppCD.map(r => ({
+                ID: cds.utils.uuid(),
+                contacc: r.contacc ?? null,
+                buspartner: r.buspartner ?? null,
+                validity: r.validity ?? null,
+                replacementCA: r.replacementCA ?? null,
+                est12month: r.est12month ?? null,
+                providercontractId: r.providercontractId ?? null,
+                cycle20: r.cycle20 ?? null,
+                metered: r.metered ?? null,
+                arrear60: r.arrear60 ?? null,
+                nsfFlag: r.nsfFlag ?? null,
+                inactive: r.inactive ?? null,
+                enrolled: r.enrolled ?? null,
+                selected: r.selected ?? null,
+                opportunity_ID: newQuoteID
+              }));
+            }
+
+            if (newShellCDRows.length > 0) {
+              await insertInBatches(ConsumptionDetail, newShellCDRows);
+              console.log(`New Quote CD: ${newShellCDRows.length} rows copied from OPP`);
+            }
+
+            // ── Copy ALL Prospect rows from OPP into new quote shell ─────
+
+            let newShellPRRows = [];
+            if (parentOppNew) {
+              const oppPR = await tx.run(
+                SELECT.from(Prospect).where({ opportunity_ID: parentOppNew.ID })
+              );
+
+              newShellPRRows = oppPR.map(r => ({
+                ID: cds.utils.uuid(),
+                siteAddLoc: r.siteAddLoc ?? null,
+                projectedCon: r.projectedCon ?? null,
+                year: r.year ?? null,
+                opportunity_ID: newQuoteID
+              }));
+            }
+
+            if (newShellPRRows.length > 0) {
+              await insertInBatches(Prospect, newShellPRRows);
+              console.log(`New Quote PR: ${newShellPRRows.length} rows copied from OPP`);
+            }
+
           }
 
         } else {
-          // ── OPP push — existing logic ─────────────────────────────────
+
+          // ── OPP push ──────────────────────────────────────────────────────
           const existing = await tx.run(
             SELECT.one.from(Opportunity).columns('ID')
               .where({ Oppid: opp.Oppid, objectStatus: 'OPP' })
@@ -2217,89 +2208,130 @@ module.exports = (srv) => {
             await tx.run(INSERT.into(Opportunity).entries({
               ID: newID, Oppid: opp.Oppid, ...oppCols
             }));
+
             oppID = newID;
             inserted++;
           }
 
           if (!oppID) return req.error(500, 'Failed to upsert Opportunity');
 
-          // Replace children for OPP only
-          await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: oppID }));
-          // await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: oppID }));
+          // ── InvolvedParties: full replace (delete + re-insert) ────────────
 
+          await tx.run(DELETE.from(InvolvedParties).where({ opportunity_ID: oppID }));
           const ipRows = (involvedParties || []).map(x => ({
-            ID: cds.utils.uuid(),          // ← ADD THIS
+            ID: cds.utils.uuid(),
             buspartner: x?.buspartner ?? null,
             role: x?.role ?? null,
             opportunity_ID: oppID
           }));
 
-          // Snapshot existing exportChk/exportDate before deleting PC rows
-          // Fetch ALL columns — avoid .columns() projection which can silently drop fields
-          const existingPCSnap = await tx.run(
+          // ── ProviderContract: smart upsert + delete orphans ───────────────
+          //
+          // Rules:
+          //   1. Match by productId  → UPDATE (C4C fields only, BTP fields preserved)
+          //   2. No productId in DB  → migrate: stamp productId, UPDATE
+          //   3. No match at all     → INSERT new row
+          //   4. DB row not in payload at all → DELETE
+
+          const existingPCRows = await tx.run(
             SELECT.from(ProviderContract).where({ opportunity_ID: oppID })
           );
-          const snapMap = {};
-          existingPCSnap.forEach(r => { snapMap[`${r.product}|${r.portfolio}|${r.startDate}`] = r; });
-          console.log('PC Snap rows fetched:', existingPCSnap.length);
-          console.log('PC SnapMap:', JSON.stringify(snapMap, null, 2));
-          await tx.run(DELETE.from(ProviderContract).where({ opportunity_ID: oppID }));
 
-          // const pcRows = (providerContracts || []).map(x => ({
-          //   ID: cds.utils.uuid(),          // ← ADD THIS
-          //   product: x?.product ?? null,
-          //   portfolio: x?.portfolio ?? null,
-          //   fixedMWh: x?.fixedMWh ?? null,
-          //   fixedPrice: x?.fixedPrice ?? null,
-          //   portfolioprice: x?.portfolioprice ?? null,
-          //   subspercent: x?.subspercent ?? null,
-          //   startDate: x?.startDate ?? null,
-          //   endDate: x?.endDate ?? null,
-          //   enrollChk: x?.enrollChk ?? null,
-          //   exportDate: x?.exportDate ?? null,
-          //   exportChk: x?.exportChk ?? null,
-          //   opportunity_ID: oppID
-          // }));
-          const pcRows = (providerContracts || []).map(x => {
-            const snap = snapMap[`${x?.product}|${x?.portfolio}|${x?.startDate}`] || {};
-            return {
-              ID: cds.utils.uuid(),
-              product: x?.product ?? null,
-              portfolio: x?.portfolio ?? null,
-              // ── C4C-owned fields: always take from payload ──
-              startDate: x?.startDate ?? null,
-              endDate: x?.endDate ?? null,
-              // ── BTP-owned fields: restore from snap ──
-              fixedMWh: snap.fixedMWh ?? null,
-              fixedPrice: snap.fixedPrice ?? null,
-              portfolioprice: snap.portfolioprice ?? null,
-              subspercent: snap.subspercent ?? null,
-              enrollChk: snap.enrollChk ?? null,
-              exportChk: snap.exportChk ?? null,
-              exportDate: snap.exportDate ?? null,
-              // ── These were missing — add them ──
-              recPrice: snap.recPrice ?? null,
-              migpPercent: snap.migpPercent ?? null,
-              recpercent: snap.recpercent ?? null,
-              migpMWh: snap.migpMWh ?? null,
-              recMWh: snap.recMWh ?? null,
-              estUsage: snap.estUsage ?? null,
-              netPremium: snap.netPremium ?? null,
-              opportunity_ID: oppID
-            };
-          });
+          console.log('PC rows fetched from DB:', existingPCRows.length);
 
+          // Build snap: productId → DB row (only rows that already have productId)
+
+          const snapById = buildPCSnapById(existingPCRows);
+          // Track which DB row IDs get claimed by payload items
+          const claimedDbIds = new Set();
+          const pcToInsert = [];
+          for (const x of (providerContracts || [])) {
+            // ── Try 1: match by productId (fast path) ──────────────────────
+            let existing_pc = x?.productId ? snapById[x.productId] : null;
+            if (existing_pc) claimedDbIds.add(existing_pc.ID);
+            // ── Try 2: migration — null-productId row with same product name
+            if (!existing_pc && x?.product) {
+              existing_pc = existingPCRows.find(r =>
+                !r.productId &&
+                r.product === x.product &&
+                !claimedDbIds.has(r.ID)
+              );
+
+              if (existing_pc) {
+                claimedDbIds.add(existing_pc.ID);
+                console.log(`PC migration: stamping productId=${x.productId} onto DB row ID=${existing_pc.ID}`);
+              }
+            }
+
+            if (existing_pc) {
+              // ── UPDATE: stamp productId if missing, update C4C fields only
+              await tx.run(
+                UPDATE(ProviderContract)
+                  .set({
+                    productId: x?.productId ?? existing_pc.productId ?? null,
+                    product: x?.product ?? existing_pc.product ?? null,
+                    startDate: x?.startDate ?? null,
+                    endDate: x?.endDate ?? null,
+                  })
+                  .where({ ID: existing_pc.ID })
+              );
+
+              console.log(`PC updated (productId=${x?.productId}, product=${x?.product})`);
+            } else {
+
+              // ── INSERT: brand-new product never seen before
+              const newRow = {
+                ID: cds.utils.uuid(),
+                productId: x?.productId ?? null,
+                product: x?.product ?? null,
+                portfolio: null,
+                startDate: x?.startDate ?? null,
+                endDate: x?.endDate ?? null,
+                fixedMWh: null,
+                fixedPrice: null,
+                portfolioprice: null,
+                subspercent: null,
+                enrollChk: null,
+                exportChk: null,
+                exportDate: null,
+                recPrice: null,
+                migpPercent: null,
+                recpercent: null,
+                migpMWh: null,
+                recMWh: null,
+                estUsage: null,
+                netPremium: null,
+                opportunity_ID: oppID
+
+              };
+
+              pcToInsert.push(newRow);
+              claimedDbIds.add(newRow.ID);
+              console.log(`PC queued for insert (productId=${x?.productId}, product=${x?.product})`);
+            }
+          }
+
+          // ── DELETE orphan DB rows not present in payload ──────────────────
+          const orphanRows = existingPCRows.filter(r => !claimedDbIds.has(r.ID));
+          if (orphanRows.length > 0) {
+            for (const r of orphanRows) {
+              await tx.run(DELETE.from(ProviderContract).where({ ID: r.ID }));
+              console.log(`PC deleted (orphan not in payload): productId=${r.productId}, product=${r.product}`);
+            }
+          }
 
           childrenWritten += await insertInBatches(InvolvedParties, ipRows);
-          childrenWritten += await insertInBatches(ProviderContract, pcRows);
+          if (pcToInsert.length > 0) {
+            childrenWritten += await insertInBatches(ProviderContract, pcToInsert);
+          }
+          console.log(`OPP PC summary — existing: ${existingPCRows.length}, updated: ${existingPCRows.length - orphanRows.length - pcToInsert.length + (existingPCRows.length - orphanRows.length)}, inserted: ${pcToInsert.length}, deleted: ${orphanRows.length}`);
         }
-
         return { status: 'SUCCESS', inserted, updated, childrenWritten };
-
       } catch (e) {
         req.error(500, e.message || e);
       }
     });
+
 
   }
 };

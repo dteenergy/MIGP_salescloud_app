@@ -33,6 +33,7 @@ entity ConsumptionDetail : cuid, managed {
 
 entity ProviderContract : cuid, managed {
   product        : String;
+  productId       : String;  
   portfolio      : String;
   fixedMWh       : String;
   fixedPrice     : String; // SMB fixed dollar amount
