@@ -726,71 +726,193 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         // _lockOpportunityFields — lock all fields when status = Approved/Closed
         // ─────────────────────────────────────────────────────────────────────
-        _lockOpportunityFields: function (sStatus) {
+       _lockOpportunityFields: function (sStatus) {
+
+            // ── 1. Header / simple fields (same as before) ────────────────────────
             var aLockIds = [
                 "idModel_CS",           // Opportunity Category
                 "idMode_CS",            // Price Structure
                 "idMode_S",             // Sales Type
-                // "idstatus",             // Status
                 "idnte",                // NTE Price
                 "idincludePipeline",    // Include in Pipeline
                 "idcommLetterSent",     // Commencement Letter Sent
-                "idcommLetterSigned"    // Commencement Letter Signed
+                "idcommLetterSigned",   // Commencement Letter Signed
+                "idsalesPhase",          // Sales Phase
+                "idpusage"
             ];
             aLockIds.forEach(function (sId) {
                 var oCtrl = this.getView().byId(sId);
                 if (oCtrl && oCtrl.setEditable) { oCtrl.setEditable(false); }
+                if (oCtrl && oCtrl.setEnabled) { oCtrl.setEnabled(false); }
             }.bind(this));
 
-            // ── Disable Save button — correct ID from view XML ──
+            // ── 2. Disable Save / Fetch / Calculate buttons ───────────────────────
             var oSaveBtn = this.getView().byId("_IDButton_postgresav");
             if (oSaveBtn) { oSaveBtn.setEnabled(false); }
 
-            // ── BUG 17907: Also disable Fetch/Validate CA and Calculate ───────
             var oFetchBtn = this.getView().byId("IDverify");
             if (oFetchBtn) { oFetchBtn.setEnabled(false); }
 
             var oCalcBtn = this.getView().byId("IDcalculate");
             if (oCalcBtn) { oCalcBtn.setEnabled(false); }
-            // ──────────────────────────────────────────────────────────────────
 
+            // ── 3. Consumption Tab — freeze Select-All header checkbox + row checkboxes ──
+            // 3a. "Select All" header checkbox
+            var oSelectAllCA = this.getView().byId("idSelectAllCA");
+            if (oSelectAllCA) { oSelectAllCA.setEnabled(false); }
+
+            // 3b. Row-level checkboxes (template items — iterate table items)
+            var oCATable = this.getView().byId("tableISUCA");
+            if (oCATable) {
+                oCATable.getItems().forEach(function (oItem) {
+                    var aCells = oItem.getCells();
+                    // Cell 0 is the selected CheckBox
+                    if (aCells[0] && aCells[0].setEnabled) {
+                        aCells[0].setEnabled(false);
+                    }
+                });
+            }
+
+            // ── 4. Provider Contract Tab — freeze all editable cells in both tables ──
+            // Indices of editable cells in SMB table (tablesmall):
+            //   0=product, 1=portfolio, 2=fixedPrice, 3=netPremium,
+            //   4=portfolioprice, 5=subspercent(Select), 6=startDate,
+            //   8=exportChk(CheckBox)
+            // ── 4. Provider Contract — SMB table ─────────────────────────────────
+            var oSMBTable = this.getView().byId("tablesmall");
+            if (oSMBTable) {
+                oSMBTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(false); }
+                        if (oCell.setEnabled) { oCell.setEnabled(false); }
+                    });
+                });
+            }
+            var oSelectAllSMB = this.getView().byId("idSelectAllExportSMB");
+            if (oSelectAllSMB) { oSelectAllSMB.setEnabled(false); }
+
+            // ── Provider Contract — LCVP table ───────────────────────────────────
+            var oLCVPTable = this.getView().byId("tablelarge");
+            if (oLCVPTable) {
+                oLCVPTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(false); }
+                        if (oCell.setEnabled) { oCell.setEnabled(false); }
+                    });
+                });
+            }
+            var oSelectAllLCVP = this.getView().byId("idSelectAllExportLCVP");
+            if (oSelectAllLCVP) { oSelectAllLCVP.setEnabled(false); }
+
+            // ── 5. Prospect Tab — freeze all row input fields ─────────────────────
+            var oProspectTable = this.getView().byId("table11");
+            if (oProspectTable) {
+                oProspectTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(false); }
+                        if (oCell.setEnabled) { oCell.setEnabled(false); }
+                    });
+                });
+            }
+            var oAddRowBtn = this.getView().byId("idbtn_addnewRow_Fuses");
+            if (oAddRowBtn) { oAddRowBtn.setEnabled(false); }
+
+            // ── 6. Toast ──────────────────────────────────────────────────────────
             MessageToast.show(
                 sStatus === "Won"
                     ? "This Opportunity is Won and locked. Open the Quote to make amendments."
                     : "This Opportunity is locked. Create a Quote to make amendments."
             );
         },
-        // ─────────────────────────────────────────────────────────────────────
+
+        // ─────────────────────────────────────────────────────────────────────────────
         // _unlockOpportunityFields — restore all fields to editable state
         // Called at START of _populateAllFields to reset before applying lock
-        // ─────────────────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────────────
         _unlockOpportunityFields: function () {
+
+            // ── 1. Header / simple fields ─────────────────────────────────────────
             var aLockIds = [
                 "idModel_CS",
                 "idMode_CS",
                 "idMode_S",
-                // "idstatus",
                 "idnte",
                 "idincludePipeline",
                 "idcommLetterSent",
-                "idcommLetterSigned"
+                "idcommLetterSigned",
+                "idsalesPhase",
+                "idpusage"
             ];
             aLockIds.forEach(function (sId) {
                 var oCtrl = this.getView().byId(sId);
                 if (oCtrl && oCtrl.setEditable) { oCtrl.setEditable(true); }
+                if (oCtrl && oCtrl.setEnabled) { oCtrl.setEnabled(true); }
             }.bind(this));
 
-            // Re-enable Save button
+            // ── 2. Re-enable Save / Fetch / Calculate buttons ─────────────────────
             var oSaveBtn = this.getView().byId("_IDButton_postgresav");
             if (oSaveBtn) { oSaveBtn.setEnabled(true); }
 
-            // BUG 17907: Re-enable Fetch and Calculate when unlocking
             var oFetchBtn = this.getView().byId("IDverify");
             if (oFetchBtn) { oFetchBtn.setEnabled(true); }
 
             var oCalcBtn = this.getView().byId("IDcalculate");
             if (oCalcBtn) { oCalcBtn.setEnabled(true); }
+
+            // ── 3. Consumption Tab — re-enable Select-All header + row checkboxes ──
+            var oSelectAllCA = this.getView().byId("idSelectAllCA");
+            if (oSelectAllCA) { oSelectAllCA.setEnabled(true); }
+
+            var oCATable = this.getView().byId("tableISUCA");
+            if (oCATable) {
+                oCATable.getItems().forEach(function (oItem) {
+                    var aCells = oItem.getCells();
+                    if (aCells[0] && aCells[0].setEnabled) {
+                        aCells[0].setEnabled(true);
+                    }
+                });
+            }
+
+            // ── 4. Provider Contract — SMB table ─────────────────────────────────
+            var oSMBTable = this.getView().byId("tablesmall");
+            if (oSMBTable) {
+                oSMBTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(true); }
+                        if (oCell.setEnabled) { oCell.setEnabled(true); }
+                    });
+                });
+            }
+            var oSelectAllSMB = this.getView().byId("idSelectAllExportSMB");
+            if (oSelectAllSMB) { oSelectAllSMB.setEnabled(true); }
+
+            // ── Provider Contract — LCVP table ───────────────────────────────────
+            var oLCVPTable = this.getView().byId("tablelarge");
+            if (oLCVPTable) {
+                oLCVPTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(true); }
+                        if (oCell.setEnabled) { oCell.setEnabled(true); }
+                    });
+                });
+            }
+            var oSelectAllLCVP = this.getView().byId("idSelectAllExportLCVP");
+            if (oSelectAllLCVP) { oSelectAllLCVP.setEnabled(true); }
+
+            // ── 5. Prospect Tab — re-enable all row input fields ──────────────────
+            var oProspectTable = this.getView().byId("table11");
+            if (oProspectTable) {
+                oProspectTable.getItems().forEach(function (oItem) {
+                    oItem.getCells().forEach(function (oCell) {
+                        if (oCell.setEditable) { oCell.setEditable(true); }
+                        if (oCell.setEnabled) { oCell.setEnabled(true); }
+                    });
+                });
+            }
+            var oAddRowBtn = this.getView().byId("idbtn_addnewRow_Fuses");
+            if (oAddRowBtn) { oAddRowBtn.setEnabled(true); }
         },
+
         // ─────────────────────────────────────────────────────────────────────
         // _applyInactiveFilter — default filter: hide Inactive = 'Yes' rows
         // ─────────────────────────────────────────────────────────────────────
@@ -818,6 +940,73 @@ sap.ui.define([
             if (oExportBtn) { oExportBtn.setEnabled(!bIsOneTime); }
         },
 
+        // ─────────────────────────────────────────────────────────────────────
+        // formatThousands — thousands place commas display
+        // ─────────────────────────────────────────────────────────────────────
+        formatThousands: function (sValue) {
+            if (sValue === null || sValue === undefined || sValue === '') return '';
+            var fVal = parseFloat(sValue);
+            if (isNaN(fVal)) return sValue;
+            return fVal.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        },
+
+        // ─────────────────────────────────────────────────────────────────────
+        // onProviderContractInputChange — numeric + max 2 decimals validation
+        // Used by: portfolio, netPremium
+        // ─────────────────────────────────────────────────────────────────────
+        onProviderContractInputChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sValue = oInput.getValue().trim();
+
+
+            // Allow empty
+            if (!sValue) {
+                oInput.setValueState("None");
+                oInput.setValueStateText("");
+                return;
+            }
+
+            // Must be a number with max 2 decimal places
+            var sNormalized = sValue.replace(/,/g, "");
+            var rNumeric = /^\d+(\.\d{1,2})?$/;
+            if (!rNumeric.test(sNormalized)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Enter a valid number with up to 2 decimal places (e.g. 12 or 12.50)");
+                //  oInput.setValue("");   // clear invalid value
+            } else {
+                oInput.setValueState("Success");
+                oInput.setValueStateText("");
+            }
+        },
+
+        // ─────────────────────────────────────────────────────────────────────
+        // onFixedOrFlexChange — numeric validation + Fixed vs Flex mutual exclusion
+        // Used by: fixedPrice, portfolioprice
+        // ─────────────────────────────────────────────────────────────────────
+        onFixedOrFlexChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sValue = oInput.getValue().trim();
+
+            if (sValue) {
+                var rNumeric = /^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/;
+                if (!rNumeric.test(sValue)) {
+                    oInput.setValueState("Error");
+                    oInput.setValueStateText("Enter a valid number with up to 2 decimal places");
+                    // oInput.setValue("");
+                    return;
+                } else {
+                    oInput.setValueState("Success");
+                    oInput.setValueStateText("");
+                }
+            } else {
+                oInput.setValueState("None");
+                oInput.setValueStateText("");
+            }
+        },
+        
         // ─────────────────────────────────────────────────────────────────────
         // onOppIdSuggest
         // ─────────────────────────────────────────────────────────────────────
@@ -1259,6 +1448,60 @@ sap.ui.define([
         //
         // =====================================================================
         oncalc: function () {
+
+            // ── Validate portfolioprice (Flex $/MWh) in LCVP table ───────────
+            var bHasError = false;
+            var rNumeric = /^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/;
+
+            var oLCVPTable = this.getView().byId("tablelarge");
+            if (oLCVPTable && oLCVPTable.getVisible()) {
+                oLCVPTable.getItems().forEach(function (oItem) {
+                    var oCell = oItem.getCells()[2]; // portfolioprice is cell index 2
+                    if (!oCell || !oCell.getValue) { return; }
+                    var sRaw = oCell.getValue().trim();
+                    var sClean = sRaw.replace(/,/g, "");
+                    if (!sRaw) { return; } // allow empty
+                    if (isNaN(sClean) || !rNumeric.test(sRaw)) {
+                        oCell.setValueState("Error");
+                        oCell.setValueStateText("Enter a valid number with up to 2 decimal places");
+                        bHasError = true;
+                    } else {
+                        oCell.setValueState("None");
+                    }
+                });
+            }
+
+            // ── Validate numeric fields in SMB table ─────────────────────────────
+            var oSMBTable = this.getView().byId("tablesmall");
+            if (oSMBTable && oSMBTable.getVisible()) {
+                oSMBTable.getItems().forEach(function (oItem) {
+                    var aCells = oItem.getCells();
+                    // cell 2=fixedPrice, 3=netPremium, 4=portfolioprice
+                    [2, 3, 4].forEach(function (iIdx) {
+                        var oCell = aCells[iIdx];
+                        if (!oCell || !oCell.getValue) { return; }
+                        var sRaw = oCell.getValue().trim();
+                        var sClean = sRaw.replace(/,/g, "");
+                        if (!sRaw) { return; } // allow empty
+                        if (isNaN(sClean) || !rNumeric.test(sRaw)) {
+                            oCell.setValueState("Error");
+                            oCell.setValueStateText("Enter a valid number with up to 2 decimal places");
+                            bHasError = true;
+                        } else {
+                            oCell.setValueState("None");
+                        }
+                    });
+                });
+            }
+
+            if (bHasError) {
+                MessageToast.show("Please fix Subscription Fee ($/MWh) — only numbers up to 2 decimals allowed.");
+                return; // ← blocks calculation
+            }
+
+            // ─────────────────────────────────────────────────────────────────
+
+            
             var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
             var oSCDetail = this.getView().getModel("oSCDetail");
             if (!oTabModel || !oSCDetail) {

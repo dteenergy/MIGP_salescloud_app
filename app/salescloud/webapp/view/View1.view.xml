@@ -138,13 +138,13 @@
 
             <!-- Row 3 R: Gross Annual Usage -->
             <Label id="idlblusage" text="{i18n>grossusage}"/>
-            <Input id="idusage" value="{oSCDetail>/annualGross}" editable="false">
+            <Input id="idusage" value="{path: 'oSCDetail>/annualGross' , formatter: '.formatThousands' }" editable="false">
               <layoutData><l:GridData id="_IDGenGridData13" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
             <!-- Row 3 L: Size of Opportunity -->
             <Label id="idlblsize" text="{i18n>sizeopp}"/>
-            <Input id="idsize" value="{oSCDetail>/sizeofOpp}" editable="false">
+            <Input id="idsize" value="{ path: 'oSCDetail>/sizeofOpp', formatter: '.formatThousands' }" editable="false">
               <layoutData><l:GridData id="_IDGenGridData3" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
@@ -200,20 +200,20 @@
             
              <!-- Row 4 L: Annual Subscribed Load -->
             <Label id="idlblsubs" text="{i18n>anualsubs}"/>
-            <Input id="idsubs" value="{oSCDetail>/annualSubs}" editable="false">
+            <Input id="idsubs" value="{path:'oSCDetail>/annualSubs', formatter: '.formatThousands' }"  editable="false">
               <layoutData><l:GridData id="_IDGenGridData4" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
 
              <!-- Row 6 R: Opportunity Subscribed Load -->
             <Label id="idlblfee" text="{i18n>oppsubs}"/>
-            <Input id="idfee" value="{oSCDetail>/oppSubs}" editable="false">
+            <Input id="idfee" value="{path: 'oSCDetail>/oppSubs' , formatter: '.formatThousands' }" editable="false">
               <layoutData><l:GridData id="_IDGenGridData16" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
             <!-- Row 5 L: Contract Lifetime Value -->
             <Label id="idlblcontract" text="{i18n>conlife}"/>
-            <Input id="idcontract" value="{oSCDetail>/contLifetimeval}" editable="false">
+            <Input id="idcontract" value="{path:'oSCDetail>/contLifetimeval', formatter: '.formatThousands' }" editable="false">
               <layoutData><l:GridData id="_IDGenGridData5" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
             
@@ -229,13 +229,13 @@
            
             <!-- Row 8 L: Metered Consumption (LCVP only, hidden by default) -->
             <Label id="idlblmtrcon" text="{i18n>mtrcon}" visible="false"/>
-            <Input id="idmtrcon" value="{oSCDetail>/meteredCon}" editable="false" visible="false">
+            <Input id="idmtrcon" value="{path :'oSCDetail>/meteredCon' , formatter: '.formatThousands' }" editable="false" visible="false">
               <layoutData><l:GridData id="_IDGenGridData8" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
              <!-- Row 8 R: Unmetered Consumption (LCVP only, hidden by default) -->
             <Label id="idlblunmtrcon" text="{i18n>unmtrcon}" visible="false"/>
-            <Input id="idunmtrcon" value="{oSCDetail>/unmeteredCon}" editable="false" visible="false">
+            <Input id="idunmtrcon" value="{path :'oSCDetail>/unmeteredCon' , formatter: '.formatThousands' }" editable="false" visible="false">
               <layoutData><l:GridData id="_IDGenGridData18" span="XL7 L7 M12 S12"/></layoutData>
             </Input>
 
@@ -496,6 +496,7 @@
                          placeholder="Fixed $"
                          tooltip="Enter Fixed Price OR Subscription Fee — not both (BTP #6)"/>
                   <Input id="idInputNetPremium" 
+                         change="onProviderContractInputChange"
                          value="{oOpportunityjmodel>netPremium}"
                          type="Number"
                           placeholder="e.g. 15.20"/>
@@ -530,7 +531,8 @@
 </Select>
                   <Input id="_IDGenInput5" value="{oOpportunityjmodel>startDate}" editable="false" />
                   <!-- <Input id="_IDGenInput6" value="{oOpportunityjmodel>endDate}" editable="false" /> -->
-                  <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/>
+                  <!-- <Input id="_IDGenInput7" value="{oOpportunityjmodel>estUsage}" editable="false"/> -->
+                  <Input id="_IDGenInput7" value="{path: 'oOpportunityjmodel>estUsage' , formatter: '.formatThousands' }" editable="false"/>
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
                   <!-- <CheckBox id="_IDGenCheckBox1" selected="{oOpportunityjmodel>enrollChk}"/> -->
                   <CheckBox id="_IDGenCheckBox1b"
@@ -582,8 +584,9 @@
                          placeholder="Fixed MWh"
                          tooltip="Enter Fixed MWh OR Subscription Fee — not both (BTP #6)"/> -->
                   <Input id="_IDGenInput12" value="{oOpportunityjmodel>portfolioprice}"
+                        change="onProviderContractInputChange"
                          placeholder="Flex $/MWh"
-                         tooltip="Enter Subscription Fee OR Fixed MWh — not both (BTP #6)"/>
+                        />
                   <!-- <Input id="_IDGenInput13" value="{oOpportunityjmodel>subspercent}"/> -->
                  <Select id="_IDGenInput13"
     selectedKey="{oOpportunityjmodel>subspercent}">
@@ -609,14 +612,16 @@
     <core:Item id="_IDGenItem55" key="95"  text="95"/>
     <core:Item id="_IDGenItem57" key="100" text="100"/>
 </Select>
-                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="false" />
-                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="false" />
-                  <Input id="_IDGenInput16" value="{oOpportunityjmodel>estUsage}"    editable="false"/>
-                  <Input id="_IDGenInput17" value="{oOpportunityjmodel>recPrice}"/>
+                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="true" />
+                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <!-- <Input id="_IDGenInput16" value="{oOpportunityjmodel>estUsage}"    editable="false"/>  -->
+                  <Input id="_IDGenInput16" value="{ path: 'oOpportunityjmodel>estUsage', formatter: '.formatThousands' }" editable="false"/>
+                  <Input id="_IDGenInput17" value="{oOpportunityjmodel>recPrice}" change="onProviderContractInputChange"/>
                   <Input id="_IDGenInput18" value="{oOpportunityjmodel>migpPercent}" editable="false"/>
                   <Input id="_IDGenInput19" value="{oOpportunityjmodel>recpercent}"  editable="false"/>
-                  <Input id="_IDGenInput20" value="{oOpportunityjmodel>migpMWh}"     editable="false"/>
-                  <Input id="_IDGenInput21" value="{oOpportunityjmodel>recMWh}"      editable="false"/>
+                  <Input id="_IDGenInput20" value="{path: 'oOpportunityjmodel>migpMWh' , formatter: '.formatThousands' }"     editable="false"/>
+                  <Input id="_IDGenInput21" value="{path: 'oOpportunityjmodel>recMWh' , formatter: '.formatThousands'}"      editable="false"/>
+                  <!-- BTP suggestion #4: Enroll checkbox per row -->
                   <!-- BTP suggestion #4: Enroll checkbox per row -->
                   <!-- <CheckBox id="_IDGenCheckBox2" selected="{oOpportunityjmodel>enrollChk}"/> -->
                   <CheckBox id="_IDGenCheckBox2b"
