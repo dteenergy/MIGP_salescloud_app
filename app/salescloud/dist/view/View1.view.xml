@@ -612,8 +612,8 @@
     <core:Item id="_IDGenItem55" key="95"  text="95"/>
     <core:Item id="_IDGenItem57" key="100" text="100"/>
 </Select>
-                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="true" />
-                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="true" />
+                  <Input id="_IDGenInput14" value="{oOpportunityjmodel>startDate}" editable="false" />
+                  <Input id="_IDGenInput15" value="{oOpportunityjmodel>endDate}" editable="false" />
                   <!-- <Input id="_IDGenInput16" value="{oOpportunityjmodel>estUsage}"    editable="false"/>  -->
                   <Input id="_IDGenInput16" value="{ path: 'oOpportunityjmodel>estUsage', formatter: '.formatThousands' }" editable="false"/>
                   <Input id="_IDGenInput17" value="{oOpportunityjmodel>recPrice}" change="onProviderContractInputChange"/>

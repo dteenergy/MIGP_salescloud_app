@@ -657,15 +657,68 @@ sap.ui.define([
             }
 
             // Re-apply Export button visibility now that isQuoteContext is correctly set
+            // var oUserScope = this.getOwnerComponent().getModel("oUserScopeJModel");
+            // var bAdminNow = oUserScope && oUserScope.oData && oUserScope.oData.hasAdminAccess;
+            // var bIsQuoteNow = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+            // var oExportBtn = this.getView().byId("idbtnExport");
+            // if (oExportBtn) {
+            //     oExportBtn.setVisible(!!bAdminNow && !!bIsQuoteNow);
+            //     oExportBtn.setEnabled(!!bAdminNow && !!bIsQuoteNow);
+            // }
+            // ── changed 1 only export buttton for admins not columns ───────────────────────────────────────────────────
+            // Re-apply Export button visibility now that isQuoteContext is correctly set
+            // var oUserScope = this.getOwnerComponent().getModel("oUserScopeJModel");
+            // var bAdminNow = oUserScope && oUserScope.oData && oUserScope.oData.hasAdminAccess;
+            // var bIsQuoteNow = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+            // var oExportBtn = this.getView().byId("idbtnExport");
+            // if (oExportBtn) {
+            //     var sCatNow = oSCDetail.getProperty("/oppCategory");
+            //     var bShowExport = !!bAdminNow && (
+            //         (sCatNow === "MIGP - Small Business" && !bIsQuoteNow) ||
+            //         ((sCatNow === "MIGP - LCVP" || sCatNow === "MIGP - Dedicated Array") && bIsQuoteNow)
+            //     );
+            //     oExportBtn.setVisible(bShowExport);
+            //     oExportBtn.setEnabled(bShowExport);
+            // }
+            // ──change 2 both export buttton and columns visible for admins   ───────────────────────────────────────────────────
+            // Re-apply Export button + Export columns visibility (admin + category + context)
             var oUserScope = this.getOwnerComponent().getModel("oUserScopeJModel");
             var bAdminNow = oUserScope && oUserScope.oData && oUserScope.oData.hasAdminAccess;
-            var bIsQuoteNow = this.getView().getModel("oSCDetail").getProperty("/isQuoteContext");
+            var bIsQuoteNow = oSCDetail.getProperty("/isQuoteContext");
+            var sCatNow = oSCDetail.getProperty("/oppCategory");
+
+            var bShowExport = !!bAdminNow && (
+                (sCatNow === "MIGP - Small Business" && !bIsQuoteNow) ||
+                ((sCatNow === "MIGP - LCVP" || sCatNow === "MIGP - Dedicated Array") && bIsQuoteNow)
+            );
+
+            // ── Export button ─────────────────────────────────────────────────────────
             var oExportBtn = this.getView().byId("idbtnExport");
             if (oExportBtn) {
-                oExportBtn.setVisible(!!bAdminNow && !!bIsQuoteNow);
-                oExportBtn.setEnabled(!!bAdminNow && !!bIsQuoteNow);
+                oExportBtn.setVisible(bShowExport);
+                oExportBtn.setEnabled(bShowExport);
             }
-            
+
+            // ── SMB table: Export checkbox column + Export Date column ────────────────
+            var oSMBExportChkCol = this.getView().byId("_IDGenColumn30b");
+            var oSMBExportDateCol = this.getView().byId("_IDGenColumn31");
+            if (oSMBExportChkCol) { oSMBExportChkCol.setVisible(bShowExport); }
+            if (oSMBExportDateCol) { oSMBExportDateCol.setVisible(bShowExport); }
+
+            // ── LCVP table: Export checkbox column + Export Date column ───────────────
+            var oLCVPExportChkCol = this.getView().byId("_IDGenColumn45b");
+            var oLCVPExportDateCol = this.getView().byId("_IDGenColumn46");
+            if (oLCVPExportChkCol) { oLCVPExportChkCol.setVisible(bShowExport); }
+            if (oLCVPExportDateCol) { oLCVPExportDateCol.setVisible(bShowExport); }
+
+            // ── Select-All export checkboxes in column headers ────────────────────────
+            var oSelectAllSMB = this.getView().byId("idSelectAllExportSMB");
+            var oSelectAllLCVP = this.getView().byId("idSelectAllExportLCVP");
+            if (oSelectAllSMB) { oSelectAllSMB.setVisible(bShowExport); }
+            if (oSelectAllLCVP) { oSelectAllLCVP.setVisible(bShowExport); }
+            // ──End of change 2 both export buttton and columns visible for admins   ───────────────────────────────────────────────────
+
+
             var oPriceCB = this.getView().byId("idMode_CS");
             if (oPriceCB && oParsed.priceStructure) { oPriceCB.setSelectedKey(oParsed.priceStructure); }
             var oSalesCB = this.getView().byId("idMode_S");
@@ -726,7 +779,7 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         // _lockOpportunityFields — lock all fields when status = Approved/Closed
         // ─────────────────────────────────────────────────────────────────────
-       _lockOpportunityFields: function (sStatus) {
+        _lockOpportunityFields: function (sStatus) {
 
             // ── 1. Header / simple fields (same as before) ────────────────────────
             var aLockIds = [
@@ -1006,7 +1059,7 @@ sap.ui.define([
                 oInput.setValueStateText("");
             }
         },
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // onOppIdSuggest
         // ─────────────────────────────────────────────────────────────────────
@@ -1501,7 +1554,7 @@ sap.ui.define([
 
             // ─────────────────────────────────────────────────────────────────
 
-            
+
             var oTabModel = this.getOwnerComponent().getModel("oOpportunityjmodel");
             var oSCDetail = this.getView().getModel("oSCDetail");
             if (!oTabModel || !oSCDetail) {
@@ -1546,9 +1599,13 @@ sap.ui.define([
             }
 
             // ── STEP 1: Gross Annual Usage ────────────────────────────────────────────
+            // = SUM(CA.est12month) for ALL CAs  +  SUM(Prospect.projectedCon) for ALL Prospects
             var aCARows = oTabModel.getProperty("/ConsumptionDetails") || [];
+            var aProspectRows = oTabModel.getProperty("/Prospects") || [];
             var grossAnnualUsage = 0;
             var selectedCAsTotal = 0;
+
+            // CA contribution
             aCARows.forEach(function (oCA) {
                 var usage = parseFloat(oCA.est12month) || 0;
                 grossAnnualUsage += usage;
@@ -1556,6 +1613,13 @@ sap.ui.define([
                     selectedCAsTotal += usage;
                 }
             });
+
+            // Prospect contribution (projectedCon field)
+            aProspectRows.forEach(function (oPR) {
+                var projUsage = parseFloat(oPR.projectedCon) || 0;
+                grossAnnualUsage += projUsage;
+            });
+
             oSCDetail.setProperty("/annualGross", grossAnnualUsage.toFixed(2));
 
             // ── STEP 2: Subscription % ────────────────────────────────────────────────
@@ -3137,7 +3201,8 @@ sap.ui.define([
                             "Email Address": sEmailAddress,
                             "MIGP Start Date": fnFormatDate(oPC.startDate),
                             "MIGP End Date": '',
-                            "MIGP Change Date": ''
+                            "MIGP Change Date": '',
+                            "Portfolio ID": oPC.portfolio || '' // new require ment 
                         });
                     }
                 });
