@@ -3180,12 +3180,16 @@ sap.ui.define([
                         // ── LCVP: exactly 10 columns ─────────────────────────
                         aExportRows.push({
                             "Contract Account": oCA.contacc || '',
-                            "Contracted Price": sNTE,
+                            // "Contracted Price": sNTE,
+                            "Contracted Price": parseFloat(parseFloat(sNTE || 0).toFixed(2)),
                             "Subscription Amount": '',
-                            "Subscription Percentage": oPC.subspercent || '',
+                            // "Subscription Percentage": oPC.subspercent || '',
+                            "Subscription Percentage": parseInt(oPC.subspercent || 0, 10),
                             "Discount Code": '',
-                            "Term Year": termYr || '',
-                            "Term Month": termMo || '',
+                            // "Term Year": termYr || '',
+                            // "Term Month": termMo || '',
+                            "Term Year": parseInt(termYr || 0, 10),
+                            "Term Month": parseInt(termMo || 0, 10),
                             "LCVP Start Date": fnFormatDate(oPC.startDate),
                             "LCVP End Date": fnFormatDate(oPC.endDate),
                             "Portfolio ID": oPC.portfolio || ''
@@ -3195,8 +3199,10 @@ sap.ui.define([
                         aExportRows.push({
                             "Contract Account": oCA.contacc || '',
                             "Program Name": oPC.product || '',
-                            "Subscription Amount": oPC.fixedPrice || '',
-                            "Subscription Percentage": oPC.subspercent || '',
+                            // "Subscription Amount": oPC.fixedPrice || '',
+                            // "Subscription Percentage": oPC.subspercent || '',
+                            "Subscription Amount": parseFloat(parseFloat(oPC.fixedPrice || 0).toFixed(2)),
+                            "Subscription Percentage": parseInt(oPC.subspercent || 0, 10),
                             "Referral Code": sReferralCode,
                             "Email Address": sEmailAddress,
                             "MIGP Start Date": fnFormatDate(oPC.startDate),
@@ -3336,6 +3342,48 @@ sap.ui.define([
             aData.push({ siteAddLoc: "", year: "", projectedCon: "" });
             oTabModel.setProperty("/Prospects", aData);
         },
+
+        onDeleteProspectRow: function (oEvent) {
+            var that = this;
+
+            // Button is directly inside cells → one getParent() = ColumnListItem
+            var oButton = oEvent.getSource();
+            var oListItem = oButton.getParent();   // ← ONE parent only
+
+            // Named model — must pass model name to getBindingContext
+            var oContext = oListItem.getBindingContext("oOpportunityjmodel");
+            if (!oContext) {
+                sap.m.MessageToast.show("Could not identify row.");
+                return;
+            }
+
+            // Path = "/Prospects/2" → index = 2
+            var iIndex = parseInt(oContext.getPath().split("/").pop(), 10);
+            if (isNaN(iIndex) || iIndex < 0) {
+                sap.m.MessageToast.show("Could not identify row index.");
+                return;
+            }
+
+            var dialog = new sap.m.Dialog({
+                title: "Confirm Delete", type: "Message", state: "Warning", titleAlignment: "Center",
+                content: new sap.m.Text({ text: "Are you sure you want to delete this prospect row?" }),
+                beginButton: new sap.m.Button({
+                    text: "Delete", type: "Reject",
+                    press: function () {
+                        dialog.close();
+                        var oTabModel = that.getOwnerComponent().getModel("oOpportunityjmodel");
+                        var aData = oTabModel.getProperty("/Prospects") || [];
+                        aData.splice(iIndex, 1);
+                        oTabModel.setProperty("/Prospects", aData);
+                        sap.m.MessageToast.show("Prospect row deleted. Save to confirm.");
+                    }
+                }),
+                endButton: new sap.m.Button({ text: "Cancel", press: function () { dialog.close(); } }),
+                afterClose: function () { dialog.destroy(); }
+            });
+            dialog.open();
+        },
+
 
         onContract: function () { sap.ui.core.UIComponent.getRouterFor(this).navTo("RouteView2"); },
 

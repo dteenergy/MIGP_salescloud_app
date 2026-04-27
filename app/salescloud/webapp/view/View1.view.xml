@@ -132,7 +132,7 @@
                 <core:Item id="_IDGenItem11" key="New"           text="New Sale"/>
                 <core:Item id="_IDGenItem12" key="Amendment"     text="Amendment"/>
                 <core:Item id="_IDGenItem13" key="Renewal"       text="Renewal"/>
-                <core:Item id="_IDGenItem14" key="One-time Sale" text="One-time Sale"/>
+                <!-- <core:Item id="_IDGenItem14" key="One-time Sale" text="One-time Sale"/> -->
                 <layoutData><l:GridData id="_IDGenGridData17" span="XL7 L7 M12 S12"/></layoutData>
             </ComboBox>
 
@@ -476,14 +476,14 @@
               <!-- <Column id="_IDGenColumn30"><Text id="_IDGenText53" text="Enroll"/></Column> -->
               <!-- <Column id="_IDGenColumn30b"><Text id="_IDGenText5" text="Export"/></Column> -->
               <Column id="_IDGenColumn30b">
-    <HBox id="_IDGenHBox1" alignItems="Center">
-        <CheckBox id="idSelectAllExportSMB"
+                <HBox id="_IDGenHBox1" alignItems="Center">
+                 <CheckBox id="idSelectAllExportSMB"
                   selected="false"
                   select="onSelectAllExportSMB"
                   tooltip="Select / Deselect all rows for Export"/>
-        <Text id="_IDGenText5" text="Enroll"/>
-    </HBox>
-</Column>
+                <Text id="_IDGenText5" text="Enroll"/>
+                </HBox>
+                </Column>
               <Column id="_IDGenColumn31"><Text id="_IDGenText54" text="Export Date"/></Column>
             </columns>
             <items>
@@ -491,6 +491,15 @@
                 <cells>
                   <Input id="_IDGenInput" value="{oOpportunityjmodel>product}"/>
                   <Input id="_IDGenInput1" value="{oOpportunityjmodel>portfolio}"/>
+                  <!-- <Select id="_IDGenSelect1" selectedKey="{oOpportunityjmodel>portfolio}" forceSelection="false" >
+                   <items>
+                      <core:Item id="_IDGenItem" key="PORT_001" text="PORT_001"/>
+                      <core:Item id="_IDGenItem15" key="PORT_002" text="PORT_002"/>
+                      <core:Item id="_IDGenItem58" key="PORT_003" text="PORT_003"/>
+                      <core:Item id="_IDGenItem59" key="PORT_004" text="PORT_004"/>
+                      <core:Item id="_IDGenItem60" key="PORT_005" text="PORT_005"/>
+                   </items>
+                 </Select> -->
                   <Input id="_IDGenInput2" value="{oOpportunityjmodel>fixedPrice}"
                          change="onFixedOrFlexChange"
                          placeholder="Fixed $"
@@ -580,6 +589,15 @@
                 <cells>
                   <Input id="_IDGenInput9" value="{oOpportunityjmodel>product}"/>
                   <Input id="_IDGenInput10" value="{oOpportunityjmodel>portfolio}"/>
+                  <!-- <Select id="_IDGenSelect2" selectedKey="{oOpportunityjmodel>portfolio}" forceSelection="false" >
+                  <items>
+                      <core:Item id="_IDGenItem61" key="PORT_001" text="PORT_001"/>
+                      <core:Item id="_IDGenItem62" key="PORT_002" text="PORT_002"/>
+                      <core:Item id="_IDGenItem63" key="PORT_003" text="PORT_003"/>
+                      <core:Item id="_IDGenItem64" key="PORT_004" text="PORT_004"/>
+                      <core:Item id="_IDGenItem65" key="PORT_005" text="PORT_005"/>
+                  </items>
+                  </Select> -->
                   <!-- <Input id="_IDGenInput11" value="{oOpportunityjmodel>fixedMWh}"
                          placeholder="Fixed MWh"
                          tooltip="Enter Fixed MWh OR Subscription Fee — not both (BTP #6)"/> -->
@@ -719,6 +737,7 @@
               <Column id="_IDGenColumn47"><Text id="_IDGenText70" text="Site Address (General Location)"/></Column>
               <Column id="_IDGenColumn48"><Text id="_IDGenText71" text="Projected Consumption"/></Column>
               <Column id="_IDGenColumn49"><Text id="_IDGenText72" text="Year"/></Column>
+              <Column id="idcolDeleteProspect" width="4rem"><Text id="_IDGenText15" text=""/></Column>
             </columns>
             <items>
               <ColumnListItem id="_IDGenColumnListItem5">
@@ -726,6 +745,11 @@
                   <Input id="_IDGenInput23" value="{oOpportunityjmodel>siteAddLoc}"/>
                   <Input id="_IDGenInput24" value="{oOpportunityjmodel>projectedCon}"/>
                   <Input id="_IDGenInput25" value="{oOpportunityjmodel>year}"/>
+                  <Button id="_IDGenButton" icon="sap-icon://delete"
+                        type="Transparent"
+                        tooltip="Delete this row"
+                        enabled="{= ${oSCDetail>/status} !== 'Won' &amp;&amp; ${oSCDetail>/status} !== 'Closed' }"
+                        press="onDeleteProspectRow"/>
                 </cells>
               </ColumnListItem>
             </items>
