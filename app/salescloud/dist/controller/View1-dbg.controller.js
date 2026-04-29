@@ -561,6 +561,8 @@ sap.ui.define([
             if (oPriceCombo && oParsed.priceStructure) {
                 oPriceCombo.setSelectedKey(oParsed.priceStructure);
             }
+            this._applyPriceStructureByCategory(oParsed.oppCategory || ''); //FUT defect
+
             oSCDetail.setProperty("/nte", oParsed.nte || '');
             oSCDetail.setProperty("/term", oParsed.term || '');
             oSCDetail.setProperty("/meteredCon", oParsed.meteredCon || '');
@@ -999,6 +1001,30 @@ sap.ui.define([
         },
 
         // ─────────────────────────────────────────────────────────────────────
+        // _applyPriceStructureByCategory — SMB can default "Full Price" in Price structure and hide REC Blend from dropdown(FUT defects)
+        // ─────────────────────────────────────────────────────────────────────
+        _applyPriceStructureByCategory: function (sCategory) {
+            var oPriceCombo = this.getView().byId("idMode_CS");
+            if (!oPriceCombo) { return; }
+
+            var bIsSMB = (sCategory === "MIGP - Small Business" || sCategory === "MIGP Small Business");
+
+            if (bIsSMB) {
+                // SMB — force Full Price only
+                oPriceCombo.setSelectedKey("Full Price");
+                this.getView().getModel("oSCDetail").setProperty("/priceStructure", "Full Price");
+                oPriceCombo.getItems().forEach(function (oItem) {
+                    oItem.setEnabled(oItem.getKey() === "Full Price");
+                });
+            } else {
+                // LCVP / Dedicated Array — all options enabled
+                oPriceCombo.getItems().forEach(function (oItem) {
+                    oItem.setEnabled(true);
+                });
+            }
+        },
+
+        // ─────────────────────────────────────────────────────────────────────
         // formatThousands — thousands place commas display
         // ─────────────────────────────────────────────────────────────────────
         formatThousands: function (sValue) {
@@ -1173,6 +1199,7 @@ sap.ui.define([
             }.bind(this));
 
             this._applyOneTimeSaleRestrictions();
+            this._applyPriceStructureByCategory(sCategory); //FUT defect
             // Change 6 — onComboBoxtype ADD at end:
             // var bIsOppLocal = !this.getView().getModel("oSCDetail")
             //     .getProperty("/isQuoteContext");
