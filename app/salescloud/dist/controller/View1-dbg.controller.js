@@ -556,6 +556,11 @@ sap.ui.define([
             oSCDetail.setProperty("/contLifetimeval", oParsed.contLifetimeval || '');
             oSCDetail.setProperty("/salesType", oParsed.salesType || '');
             oSCDetail.setProperty("/priceStructure", oParsed.priceStructure || '');
+            // Sync Price Structure ComboBox selection to match loaded value 
+            var oPriceCombo = this.getView().byId("idMode_CS");
+            if (oPriceCombo && oParsed.priceStructure) {
+                oPriceCombo.setSelectedKey(oParsed.priceStructure);
+            }
             oSCDetail.setProperty("/nte", oParsed.nte || '');
             oSCDetail.setProperty("/term", oParsed.term || '');
             oSCDetail.setProperty("/meteredCon", oParsed.meteredCon || '');
@@ -1133,7 +1138,7 @@ sap.ui.define([
         // ─────────────────────────────────────────────────────────────────────
         // onComboBoxtype — show/hide LCVP fields + correct PC table
         // ─────────────────────────────────────────────────────────────────────
-        onComboBoxtype: function () {
+        onComboBoxtype: function (oEvent) {
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
             var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
             var bIsSMB = (sCategory === "MIGP - Small Business" || sCategory === "MIGP Small Business");
@@ -1184,6 +1189,13 @@ sap.ui.define([
                 var sCatSel = this.getView().byId("idModel_CS").getSelectedKey();
                 var sPhaseNow = this.getView().getModel("oSCDetail").getProperty("/salesPhase") || '';
                 this._loadSalesPhaseItems(sCatSel, sPhaseNow);
+            }
+
+            // priceStructure sync
+            if (oEvent && oEvent.getSource && oEvent.getSource().getId().includes("idMode_CS")) {
+                var oSource = oEvent.getSource();
+                var sKey = oSource.getSelectedKey ? oSource.getSelectedKey() : oSource.getKey();
+                this.getView().getModel("oSCDetail").setProperty("/priceStructure", sKey);
             }
         },
 
@@ -1575,7 +1587,7 @@ sap.ui.define([
             // ────────────────────────────────────────────────────────────────
 
             var sCategory = this.getView().byId("idModel_CS").getSelectedKey();
-            var bIsLCVP = (sCategory === "MIGP - LCVP");
+            var bIsLCVP = (sCategory === "MIGP - LCVP" || sCategory === "MIGP - Dedicated Array");
 
             // ─────────────────────────────────────────────────────────────────────────
             // HELPER: exact calendar-month count between two Date objects.
@@ -1660,7 +1672,7 @@ sap.ui.define([
                 if (aSMBValidRows.length > 1) {
                     MessageBox.error(
                         "SMB allows only 1 product line item in the Provider Contract table. " +
-                        "Escalation is not applicable for Small Business (FDD Business Rules)."
+                        "Escalation is not applicable for Small Business."
                     );
                     return;
                 }
@@ -2455,7 +2467,7 @@ sap.ui.define([
                         );
                     } else if (sMsg.indexOf("CPI_UNREACHABLE") !== -1) {
                         MessageBox.warning(
-                            "No response received from CPI.\n\n" +
+                            "No response received.\n\n" +
                             "The destination URL may be incorrect or CPI is temporarily unavailable. Check BTP Cockpit destination URL.",
                             { title: "CPI Unreachable" }
                         );
@@ -2477,7 +2489,7 @@ sap.ui.define([
                 var aFreshCAs = oFetchResult.contractAccounts || [];
                 if (!Array.isArray(aFreshCAs)) {
                     oView.setBusy(false);
-                    MessageBox.error("Invalid response from CPI — expected array of CAs.");
+                    MessageBox.error("Invalid response — expected array of CAs.");
 
                     return;
                 }
@@ -2487,12 +2499,12 @@ sap.ui.define([
                     MessageBox.warning(
                         // "No eligible electric Contract Accounts found " +
                         // "for selected Business Partner(s)."
-                        "No Contract Accounts were returned by CPI for Business Partner: " +
+                        "No Contract Accounts were returned for Business Partner: " +
                         aBPsToSend.map(function (bp) { return bp.businessPartnerId; }).join(", ") +
                         ".\n\nPossible reasons:\n" +
                         "• BP has no eligible electric Contract Accounts in CR&B\n" +
                         "• BP exists but has only gas accounts\n" +
-                        "• CR&B environment has no data for this BP",
+                        "• CR&B has no data for this BP",
                         { title: "No Contract Accounts Found" }
                     );
                     return;

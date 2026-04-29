@@ -13,6 +13,10 @@
     color: #000 !important;
 }
 
+.readOnlyCombo {
+    pointer-events: none;
+}
+
 /* Horizontal scroll */
 .sapMITBContainerContent {
     overflow-x: auto !important;
