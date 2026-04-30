@@ -45,8 +45,10 @@ sap.ui.define([
                 salesPhase: '',   // ✅ ADD
                 enrollmentReferralCode: '',   // SMB — Referral Code (e.g. TONY)
                 enrollmentEmailId: '',        // SMB — Enrollment Email ID
-                lastFetchedAt: '',   // ← persisted timestamp from DB
-                lastFetchedAtISO: '',    // ← ADD: raw ISO for save
+                // lastFetchedAt: '',   // ← persisted timestamp from DB
+                // lastFetchedAtISO: '',    // ← ADD: raw ISO for save
+                lastFetchedAt: '',   // display formatted string
+                lastFetchedAt_raw: '',  // ← raw ISO for DB save
                 OppIdSuggestions: [],
                 // Summary bar (LCVP, shown below tablelarge when 2+ rows after Calculate)
                 summarySubFee: '',
@@ -581,14 +583,24 @@ sap.ui.define([
             oSCDetail.setProperty("/enrollmentReferralCode", oParsed.enrollmentReferralCode || '');
             oSCDetail.setProperty("/enrollmentEmailId", oParsed.enrollmentEmailId || '');
             // ADD after:  oSCDetail.setProperty("/enrollmentEmailId", oParsed.enrollmentEmailId || '');
-            oSCDetail.setProperty("/lastFetchedAt", oParsed.lastFetchedAt
-                ? new Date(oParsed.lastFetchedAt).toLocaleString("en-US", {
+            // oSCDetail.setProperty("/lastFetchedAt", oParsed.lastFetchedAt
+            //     ? new Date(oParsed.lastFetchedAt).toLocaleString("en-US", {
+            //         month: "short", day: "2-digit", year: "numeric",
+            //         hour: "2-digit", minute: "2-digit", second: "2-digit"
+            //     })
+            //     : "");
+
+            // oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt || "");
+            var sRawISO = oParsed.lastFetchedAt || '';
+            console.log('Setting lastFetchedAt_raw to:', sRawISO);
+            oSCDetail.setProperty("/lastFetchedAt_raw", sRawISO);   // ← raw ISO for DB save
+            oSCDetail.setProperty("/lastFetchedAt", sRawISO
+                ? new Date(sRawISO).toLocaleString("en-US", {
                     month: "short", day: "2-digit", year: "numeric",
                     hour: "2-digit", minute: "2-digit", second: "2-digit"
                 })
                 : "");
 
-            oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt || "");
 
             var oOppInput = this.getView().byId("il8");
             if (oOppInput) { oOppInput.setValue(oParsed.Oppid || ''); }
@@ -839,17 +851,31 @@ sap.ui.define([
             //   4=portfolioprice, 5=subspercent(Select), 6=startDate,
             //   8=exportChk(CheckBox)
             // ── 4. Provider Contract — SMB table ─────────────────────────────────
+            // var oSMBTable = this.getView().byId("tablesmall");
+            // if (oSMBTable) {
+            //     oSMBTable.getItems().forEach(function (oItem) {
+            //         oItem.getCells().forEach(function (oCell) {
+            //             if (oCell.setEditable) { oCell.setEditable(false); }
+            //             if (oCell.setEnabled) { oCell.setEnabled(false); }
+            //         });
+            //     });
+            // }
+            // var oSelectAllSMB = this.getView().byId("idSelectAllExportSMB");
+            // if (oSelectAllSMB) { oSelectAllSMB.setEnabled(false); }
             var oSMBTable = this.getView().byId("tablesmall");
             if (oSMBTable) {
                 oSMBTable.getItems().forEach(function (oItem) {
-                    oItem.getCells().forEach(function (oCell) {
+                    oItem.getCells().forEach(function (oCell, iIndex) {
+                        // Cell index 8 = exportChk CheckBox — keep editable when Won
+                        if (iIndex === 8 && sStatus === "Won") { return; }
                         if (oCell.setEditable) { oCell.setEditable(false); }
                         if (oCell.setEnabled) { oCell.setEnabled(false); }
                     });
                 });
             }
+            // Keep Select-All export header enabled when Won
             var oSelectAllSMB = this.getView().byId("idSelectAllExportSMB");
-            if (oSelectAllSMB) { oSelectAllSMB.setEnabled(false); }
+            if (oSelectAllSMB) { oSelectAllSMB.setEnabled(sStatus !== "Won" ? false : true); }
 
             // ── Provider Contract — LCVP table ───────────────────────────────────
             var oLCVPTable = this.getView().byId("tablelarge");
@@ -1257,13 +1283,21 @@ sap.ui.define([
                 var oParsed = typeof oResult.value === "string"
                     ? JSON.parse(oResult.value) : oResult.value;
 
+                // if (oParsed && oParsed.lastFetchedAt) {
+                //     var sFormatted = new Date(oParsed.lastFetchedAt).toLocaleString("en-US", {
+                //         month: "short", day: "2-digit", year: "numeric",
+                //         hour: "2-digit", minute: "2-digit", second: "2-digit"
+                //     });
+                //     oSCDetail.setProperty("/lastFetchedAt", sFormatted);
+                //     oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt);
+                // }
                 if (oParsed && oParsed.lastFetchedAt) {
-                    var sFormatted = new Date(oParsed.lastFetchedAt).toLocaleString("en-US", {
+                    var sRawISO = oParsed.lastFetchedAt;
+                    oSCDetail.setProperty("/lastFetchedAt_raw", sRawISO);  // ← ADD
+                    oSCDetail.setProperty("/lastFetchedAt", new Date(sRawISO).toLocaleString("en-US", {
                         month: "short", day: "2-digit", year: "numeric",
                         hour: "2-digit", minute: "2-digit", second: "2-digit"
-                    });
-                    oSCDetail.setProperty("/lastFetchedAt", sFormatted);
-                    oSCDetail.setProperty("/lastFetchedAtISO", oParsed.lastFetchedAt);
+                    }));
                 }
             } catch (e) {
                 console.warn("Could not persist lastFetchedAt:", e.message);
@@ -2576,9 +2610,19 @@ sap.ui.define([
                 oView.setBusy(false);
 
                 // Persist lastFetchedAt timestamp from server response if available
+                // if (oFetchResult.lastFetchedAt) {
+                //     oSCDetail.setProperty("/lastFetchedAt",
+                //         new Date(oFetchResult.lastFetchedAt).toLocaleString("en-US", {
+                //             month: "short", day: "2-digit", year: "numeric",
+                //             hour: "2-digit", minute: "2-digit", second: "2-digit"
+                //         })
+                //     );
+                // }
                 if (oFetchResult.lastFetchedAt) {
+                    var sRawISO = oFetchResult.lastFetchedAt;  // ← single source of truth
+                    oSCDetail.setProperty("/lastFetchedAt_raw", sRawISO);
                     oSCDetail.setProperty("/lastFetchedAt",
-                        new Date(oFetchResult.lastFetchedAt).toLocaleString("en-US", {
+                        new Date(sRawISO).toLocaleString("en-US", {
                             month: "short", day: "2-digit", year: "numeric",
                             hour: "2-digit", minute: "2-digit", second: "2-digit"
                         })
@@ -3876,7 +3920,8 @@ sap.ui.define([
                     enrollmentReferralCode: s(oHdr.getProperty("/enrollmentReferralCode")),
                     enrollmentEmailId: s(oHdr.getProperty("/enrollmentEmailId")),
                     // lastFetchedAt: s(oHdr.getProperty("/lastFetchedAt")),   // ← persisted timestamp from DB
-                    lastFetchedAt: s(oHdr.getProperty("/lastFetchedAtISO")),
+                    // lastFetchedAt: s(oHdr.getProperty("/lastFetchedAtISO")),
+                    lastFetchedAt: s(oHdr.getProperty("/lastFetchedAt_raw")),  // ← use raw ISO
                 };
 
                 // ── Build tab data ───────────────────────────────────────────
